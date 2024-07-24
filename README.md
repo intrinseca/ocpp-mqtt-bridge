@@ -34,15 +34,15 @@ This project is tested with:
 ### Installation
 
 1. Clone the repository:
-    \```bash
+    ```bash
     git clone https://github.com/intrinseca/ocpp-mqtt-bridge.git
     cd ocpp-mqtt-bridge
-    \```
+    ```
 
 2. Build and run the Docker container:
-    \```bash
+    ```bash
     docker-compose up --build -d
-    \```
+    ```
 
 3. Configure your MQTT broker details in the `config.yaml` file.
 
@@ -52,7 +52,7 @@ This project is tested with:
 
 Update the `config.yaml` file with your MQTT broker details and other configuration parameters.
 
-\```yaml
+```yaml
 mqtt:
   broker: 'mqtt://your_broker_address'
   username: 'your_username'
@@ -61,7 +61,7 @@ mqtt:
 
 ocpp:
   port: 8082
-\```
+```
 
 ### Home Assistant Integration
 
@@ -69,7 +69,7 @@ Home Assistant integration is facilitated via MQTT discovery. Ensure your MQTT b
 
 Add the following configuration to your `configuration.yaml` in Home Assistant:
 
-\```yaml
+```yaml
 mqtt:
   broker: 'your_broker_address'
   username: 'your_username'
@@ -80,16 +80,16 @@ homeassistant:
   mqtt:
     discovery: true
     discovery_prefix: homeassistant
-\```
+```
 
 MQTT discovery will automatically add your EV chargers as devices in Home Assistant.
 
 ## Usage
 
 - Start the central station:
-    \```bash
+    ```bash
     docker-compose up
-    \```
+    ```
 - Connect your EV chargers using the OCPP protocol.
 - Monitor and control your chargers through Home Assistant.
 
