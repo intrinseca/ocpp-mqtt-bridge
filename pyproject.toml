@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "ocpp_mqtt_bridge"
-version = "0.1.0"
+version = "0.0.0"
 description = ""
 authors = ["Michael Allan <michael@intrinseca.me.uk>"]
 license = "MIT"
