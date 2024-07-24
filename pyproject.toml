@@ -1,0 +1,34 @@
+[tool.poetry]
+name = "ocpp_mqtt_bridge"
+version = "0.1.0"
+description = ""
+authors = ["Michael Allan <michael@intrinseca.me.uk>"]
+license = "MIT"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.12"
+ocpp = "^1.0.0"
+websockets = "^12.0"
+asyncio-mqtt = "^0.16.2"
+
+[tool.poetry.group.dev.dependencies]
+ruff = "^0.5.4"
+
+[tool.poetry-dynamic-versioning]
+enable = true
+[build-system]
+requires = ["poetry-core>=1.0.0", "poetry-dynamic-versioning"]
+build-backend = "poetry_dynamic_versioning.backend"
+
+[tool.ruff.lint]
+
+select = [
+    "A",  # prevent using keywords that clobber python builtins
+    "B",  # bugbear: security warnings
+    "E",  # pycodestyle
+    "F",  # pyflakes
+    "ISC",  # implicit string concatenation
+    "UP",  # alert you when better syntax is available in your python version
+    "RUF",  # the ruff developer's own rules
+]
