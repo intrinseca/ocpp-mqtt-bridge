@@ -5,7 +5,18 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Python Debugger: Module",
+            "name": "CP Simulator",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "bin/simulate_cp.py",
+            "console": "integratedTerminal",
+            "args": [
+                "--url",
+                "ws://localhost:9000"
+            ]
+        },
+        {
+            "name": "CS",
             "type": "debugpy",
             "request": "launch",
             "module": "ocpp_mqtt_bridge"

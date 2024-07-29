@@ -1,0 +1,46 @@
+import json
+from _typeshed import Incomplete
+from jsonschema import Draft4Validator
+from ocpp.exceptions import FormatViolationError as FormatViolationError, NotImplementedError as NotImplementedError, OCPPError as OCPPError, PropertyConstraintViolationError as PropertyConstraintViolationError, ProtocolError as ProtocolError, TypeConstraintViolationError as TypeConstraintViolationError, UnknownCallErrorCodeError as UnknownCallErrorCodeError, ValidationError as ValidationError
+from typing import Callable
+
+class _DecimalEncoder(json.JSONEncoder):
+    def default(self, obj): ...
+
+class MessageType:
+    Call: int
+    CallResult: int
+    CallError: int
+
+def unpack(msg): ...
+def pack(msg): ...
+def get_validator(message_type_id: int, action: str, ocpp_version: str, parse_float: Callable = ...) -> Draft4Validator: ...
+def validate_payload(message: Call | CallResult, ocpp_version: str) -> None: ...
+
+class Call:
+    message_type_id: int
+    unique_id: Incomplete
+    action: Incomplete
+    payload: Incomplete
+    def __init__(self, unique_id, action, payload) -> None: ...
+    def to_json(self): ...
+    def create_call_result(self, payload): ...
+    def create_call_error(self, exception): ...
+
+class CallResult:
+    message_type_id: int
+    unique_id: Incomplete
+    payload: Incomplete
+    action: Incomplete
+    def __init__(self, unique_id, payload, action: Incomplete | None = None) -> None: ...
+    def to_json(self): ...
+
+class CallError:
+    message_type_id: int
+    unique_id: Incomplete
+    error_code: Incomplete
+    error_description: Incomplete
+    error_details: Incomplete
+    def __init__(self, unique_id, error_code, error_description, error_details: Incomplete | None = None) -> None: ...
+    def to_json(self): ...
+    def to_exception(self): ...

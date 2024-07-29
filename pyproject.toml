@@ -14,12 +14,19 @@ asyncio-mqtt = "^0.16.2"
 
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.5.4"
+mypy = "^1.11.0"
+types-jsonschema = "^4.23.0.20240712"
+pytest = "^8.3.2"
+pytest-asyncio = "^0.23.8"
 
 [tool.poetry-dynamic-versioning]
 enable = true
 [build-system]
 requires = ["poetry-core>=1.0.0", "poetry-dynamic-versioning"]
 build-backend = "poetry_dynamic_versioning.backend"
+
+[tool.ruff]
+extend-exclude = ["stubs"]
 
 [tool.ruff.lint]
 
@@ -32,3 +39,6 @@ select = [
     "UP",  # alert you when better syntax is available in your python version
     "RUF",  # the ruff developer's own rules
 ]
+
+[tool.mypy]
+mypy_path = "$MYPY_CONFIG_FILE_DIR/stubs"
