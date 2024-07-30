@@ -25,6 +25,10 @@ enable = true
 requires = ["poetry-core>=1.0.0", "poetry-dynamic-versioning"]
 build-backend = "poetry_dynamic_versioning.backend"
 
+[tool.pytest.ini_options]
+log_cli=true
+filterwarnings = "ignore:.*Action enum contains deprecated members.*:DeprecationWarning"
+
 [tool.ruff]
 extend-exclude = ["stubs"]
 

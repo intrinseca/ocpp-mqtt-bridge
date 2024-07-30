@@ -1,4 +1,6 @@
 import asyncio
+import logging
+from datetime import datetime
 from unittest.mock import patch
 
 import pytest
@@ -6,11 +8,13 @@ import pytest_asyncio
 import websockets
 from ocpp.v16 import ChargePoint as cp
 from ocpp.v16 import call, call_result
-from ocpp.v16.enums import RegistrationStatus
+from ocpp.v16.enums import ChargePointErrorCode, ChargePointStatus, RegistrationStatus
 
 from ocpp_mqtt_bridge.cs import on_connect
 
 FAKE_TIME_STR = "2021-09-01T00:00:00.000000"
+
+logging.getLogger("ocpp_mqtt_bridge").setLevel(logging.DEBUG)
 
 
 @pytest.fixture
@@ -80,3 +84,16 @@ async def test_heartbeat(
     response: call_result.Heartbeat = await cp_simulator.call(request)
 
     assert response.current_time == FAKE_TIME_STR
+
+
+@pytest.mark.asyncio
+async def test_status_notification(
+    cp_simulator: ChargePointSimulator, patch_datetime_now
+) -> None:
+    request = call.StatusNotification(
+        1,
+        ChargePointErrorCode.no_error,
+        ChargePointStatus.preparing,
+        datetime.now().isoformat(),
+    )
+    await cp_simulator.call(request)
