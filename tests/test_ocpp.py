@@ -6,15 +6,23 @@ from unittest.mock import patch
 import pytest
 import pytest_asyncio
 import websockets
+from ocpp.routing import after, on
 from ocpp.v16 import ChargePoint as cp
 from ocpp.v16 import call, call_result
-from ocpp.v16.enums import ChargePointErrorCode, ChargePointStatus, RegistrationStatus
+from ocpp.v16.enums import (
+    Action,
+    ChargePointErrorCode,
+    ChargePointStatus,
+    RegistrationStatus,
+    RemoteStartStopStatus,
+)
 
 from ocpp_mqtt_bridge.cs import on_connect
 
 FAKE_TIME_STR = "2021-09-01T00:00:00.000000"
 
 logging.getLogger("ocpp_mqtt_bridge").setLevel(logging.DEBUG)
+logging.getLogger("transitions").setLevel(logging.INFO)
 
 
 @pytest.fixture
@@ -42,6 +50,10 @@ async def ws_client():
 
 
 class ChargePointSimulator(cp):
+    def __init__(self, *args, **kwargs):
+        self.got_remote_start = asyncio.Semaphore(value=0)
+        super().__init__(*args, **kwargs)
+
     async def send_heartbeat(self, arguments):
         request = call.Heartbeat()
         return self.call(request)
@@ -55,6 +67,14 @@ class ChargePointSimulator(cp):
 
     async def __aexit__(self, exc_type, exc, tb):
         self.start_task.cancel()
+
+    @on(Action.remote_start_transaction)
+    async def on_remote_start(self, id_tag: str, **kwargs):
+        return call_result.RemoteStartTransaction(RemoteStartStopStatus.accepted)
+
+    @after(Action.remote_start_transaction)
+    async def after_remote_start(self, id_tag: str, **kwargs):
+        self.got_remote_start.release()
 
 
 @pytest_asyncio.fixture
@@ -97,3 +117,17 @@ async def test_status_notification(
         datetime.now().isoformat(),
     )
     await cp_simulator.call(request)
+
+
+@pytest.mark.asyncio
+async def test_connected(
+    cp_simulator: ChargePointSimulator, patch_datetime_now
+) -> None:
+    request = call.StatusNotification(
+        1,
+        ChargePointErrorCode.no_error,
+        ChargePointStatus.preparing,
+        datetime.now().isoformat(),
+    )
+    await cp_simulator.call(request)
+    await asyncio.wait_for(cp_simulator.got_remote_start.acquire(), 2)
