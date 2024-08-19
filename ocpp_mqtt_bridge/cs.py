@@ -6,8 +6,10 @@ import websockets
 from ocpp.routing import after, on
 from ocpp.v16 import ChargePoint as cp
 from ocpp.v16 import call, call_result
+from ocpp.v16.datatypes import IdTagInfo
 from ocpp.v16.enums import (
     Action,
+    AuthorizationStatus,
     ChargePointErrorCode,
     ChargePointStatus,
     RegistrationStatus,
@@ -106,6 +108,22 @@ class MyChargePoint(cp):
             call.RemoteStartTransaction("noIdTag")
         )
         self.logger.debug("Remote start %s", result.status)
+
+    @on(Action.start_transaction)
+    async def on_start_transaction(
+        self,
+        connector_id: int,
+        id_tag: str,
+        meter_start: int,
+        timestamp: str,
+        reservation_id: int | None = None,
+        **kwargs,
+    ):
+        self.logger.debug("Transaction started")
+
+        return call_result.StartTransaction(
+            1, id_tag_info=IdTagInfo(AuthorizationStatus.accepted)
+        )
 
     async def on_enter_idle(self) -> None:
         self.logger.debug("Entering idle, queueing RemoteStartTransaction")

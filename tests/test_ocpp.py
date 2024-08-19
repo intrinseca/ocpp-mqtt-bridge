@@ -11,6 +11,7 @@ from ocpp.v16 import ChargePoint as cp
 from ocpp.v16 import call, call_result
 from ocpp.v16.enums import (
     Action,
+    AuthorizationStatus,
     ChargePointErrorCode,
     ChargePointStatus,
     RegistrationStatus,
@@ -131,3 +132,33 @@ async def test_connected(
     )
     await cp_simulator.call(request)
     await asyncio.wait_for(cp_simulator.got_remote_start.acquire(), 2)
+
+
+@pytest.mark.asyncio
+async def test_start(cp_simulator: ChargePointSimulator, patch_datetime_now) -> None:
+    request = call.StartTransaction(
+        connector_id=1, id_tag="", meter_start=0, timestamp=datetime.now().isoformat()
+    )
+    result: call_result.StartTransaction = await cp_simulator.call(request)
+
+    assert result.id_tag_info["status"] == AuthorizationStatus.accepted  # type: ignore[index]
+
+
+@pytest.mark.asyncio
+async def test_connect_and_start(
+    cp_simulator: ChargePointSimulator, patch_datetime_now
+) -> None:
+    request = call.StatusNotification(
+        1,
+        ChargePointErrorCode.no_error,
+        ChargePointStatus.preparing,
+        datetime.now().isoformat(),
+    )
+    await cp_simulator.call(request)
+    await asyncio.wait_for(cp_simulator.got_remote_start.acquire(), 2)
+
+    start_request = call.StartTransaction(
+        connector_id=1, id_tag="", meter_start=0, timestamp=datetime.now().isoformat()
+    )
+    result: call_result.StartTransaction = await cp_simulator.call(start_request)
+    assert result.id_tag_info["status"] == AuthorizationStatus.accepted  # type: ignore[index]
