@@ -1,11 +1,13 @@
 import asyncio
+import functools
 import logging
 from datetime import datetime
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 import pytest_asyncio
 import websockets
+from aiomqtt import Client
 from ocpp.routing import after, on
 from ocpp.v16 import ChargePoint as cp
 from ocpp.v16 import call, call_result
@@ -35,9 +37,10 @@ def patch_datetime_now():
 
 @pytest_asyncio.fixture()
 async def ws_server():
-    async with websockets.serve(
-        on_connect, "127.0.0.1", 9000, subprotocols=["ocpp1.6"]
-    ):
+    mock_mqtt_client = AsyncMock(Client)
+    handler = functools.partial(on_connect, mqtt_client=mock_mqtt_client)
+
+    async with websockets.serve(handler, "127.0.0.1", 9000, subprotocols=["ocpp1.6"]):
         yield
 
 
