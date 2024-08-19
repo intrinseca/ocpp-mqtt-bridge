@@ -1,6 +1,7 @@
-from unittest.mock import Mock
+from unittest.mock import AsyncMock, Mock
 
 import pytest
+from aiomqtt import Client
 from transitions import Machine
 
 from ocpp_mqtt_bridge.cs import MyChargePoint, states, transitions
@@ -10,7 +11,8 @@ machine = Machine(states=states, transitions=transitions, initial="unknown")
 
 @pytest.fixture()
 def model():
-    model = MyChargePoint("dummy", None)
+    mock_mqtt_client = AsyncMock(Client)
+    model = MyChargePoint("dummy", None, mock_mqtt_client)
     machine.add_model(model)
 
     model.on_enter_idle = Mock()
