@@ -42,6 +42,7 @@ default_machine = AsyncMachine(
     states=states,
     transitions=transitions,
     initial="unknown",
+    after_state_change="on_state_change",
 )
 
 
@@ -51,8 +52,6 @@ class MyChargePoint(cp):
         self.mqtt_client = mqtt_client
 
         super().__init__(id, connection, response_timeout)
-
-        self.action_queue = asyncio.Queue[str]()
 
     @on(Action.boot_notification)
     async def on_boot_notification(
@@ -102,7 +101,7 @@ class MyChargePoint(cp):
             status,
         )
 
-        await self.mqtt_client.publish(f"ocpp/{self.id}/status", status)
+        await self.mqtt_client.publish(f"ocpp/{self.id}/connector_status", status)
 
         return call_result.StatusNotification()
 
@@ -121,11 +120,10 @@ class MyChargePoint(cp):
             status,
         )
 
-        # await self.trigger(status)  # type:ignore[attr-defined]
-        result: call_result.RemoteStartTransaction = await self.call(
-            call.RemoteStartTransaction("noIdTag")
-        )
-        self.logger.debug("Remote start %s", result.status)
+        await self.trigger(status)  # type:ignore[attr-defined]
+
+    async def on_state_change(self):
+        await self.mqtt_client.publish(f"ocpp/{self.id}/state", self.state)
 
     @on(Action.start_transaction)
     async def on_start_transaction(
@@ -144,19 +142,10 @@ class MyChargePoint(cp):
         )
 
     async def on_enter_idle(self) -> None:
-        self.logger.debug("Entering idle, queueing RemoteStartTransaction")
-        await self.action_queue.put("RemoteStart")
-
-    async def queue_consumer(self) -> None:
-        while True:
-            action = await self.action_queue.get()
-            self.logger.debug("[Action Queue] %s", action)
-            match action:
-                case "RemoteStart":
-                    result: call_result.RemoteStartTransaction = await self.call(
-                        call.RemoteStartTransaction("noIdTag")
-                    )
-                    self.logger.debug("Remote start %s", result.status)
+        result: call_result.RemoteStartTransaction = await self.call(
+            call.RemoteStartTransaction("noIdTag")
+        )
+        self.logger.debug("Remote start %s", result.status)
 
     async def mqtt_consumer(self) -> None:
         await self.mqtt_client.subscribe(f"ocpp/{self.id}/charge_limit")
@@ -180,7 +169,7 @@ async def on_connect(websocket, path, mqtt_client):
     logger.debug("CP %s connected", charge_point_id)
 
     try:
-        await asyncio.gather(cp.start(), cp.queue_consumer(), cp.mqtt_consumer())
+        await asyncio.gather(cp.start(), cp.mqtt_consumer())
     except websockets.exceptions.ConnectionClosedOK:
         logger.debug("CP %s disconnected", charge_point_id)
 
