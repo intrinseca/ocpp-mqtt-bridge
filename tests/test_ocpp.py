@@ -1,8 +1,8 @@
 import asyncio
+import datetime
 import functools
 import logging
-from datetime import datetime
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock
 
 import pytest
 import pytest_asyncio
@@ -16,23 +16,15 @@ from ocpp.v16.enums import (
     AuthorizationStatus,
     ChargePointErrorCode,
     ChargePointStatus,
+    ChargingProfileStatus,
     RegistrationStatus,
     RemoteStartStopStatus,
 )
 
 from ocpp_mqtt_bridge.cs import on_connect
 
-FAKE_TIME_STR = "2021-09-01T00:00:00.000000"
-
 logging.getLogger("ocpp_mqtt_bridge").setLevel(logging.DEBUG)
 logging.getLogger("transitions").setLevel(logging.INFO)
-
-
-@pytest.fixture
-def patch_datetime_now():
-    with patch("datetime.datetime") as mock_datetime:
-        mock_datetime.now.return_value.isoformat.return_value = FAKE_TIME_STR
-        yield mock_datetime
 
 
 @pytest_asyncio.fixture()
@@ -80,6 +72,10 @@ class ChargePointSimulator(cp):
     async def after_remote_start(self, id_tag: str, **kwargs):
         self.got_remote_start.release()
 
+    @on(Action.SetChargingProfile)
+    async def set_charging_profile(self, **kwargs):
+        return call_result.SetChargingProfile(ChargingProfileStatus.accepted)
+
 
 @pytest_asyncio.fixture
 async def cp_simulator(ws_server, ws_client):
@@ -97,7 +93,10 @@ async def test_boot(cp_simulator: ChargePointSimulator, patch_datetime_now) -> N
 
     assert response.status == RegistrationStatus.accepted
     assert response.interval == 10
-    assert response.current_time == FAKE_TIME_STR
+    assert (
+        response.current_time
+        == datetime.datetime.now(datetime.timezone.utc).isoformat()
+    )
 
 
 @pytest.mark.asyncio
@@ -107,7 +106,10 @@ async def test_heartbeat(
     request = call.Heartbeat()
     response: call_result.Heartbeat = await cp_simulator.call(request)
 
-    assert response.current_time == FAKE_TIME_STR
+    assert (
+        response.current_time
+        == datetime.datetime.now(datetime.timezone.utc).isoformat()
+    )
 
 
 @pytest.mark.asyncio
@@ -118,7 +120,7 @@ async def test_status_notification(
         1,
         ChargePointErrorCode.no_error,
         ChargePointStatus.preparing,
-        datetime.now().isoformat(),
+        datetime.datetime.now().isoformat(),
     )
     await cp_simulator.call(request)
 
@@ -131,7 +133,7 @@ async def test_connected(
         1,
         ChargePointErrorCode.no_error,
         ChargePointStatus.preparing,
-        datetime.now().isoformat(),
+        datetime.datetime.now().isoformat(),
     )
     await cp_simulator.call(request)
     await asyncio.wait_for(cp_simulator.got_remote_start.acquire(), 2)
@@ -140,7 +142,10 @@ async def test_connected(
 @pytest.mark.asyncio
 async def test_start(cp_simulator: ChargePointSimulator, patch_datetime_now) -> None:
     request = call.StartTransaction(
-        connector_id=1, id_tag="", meter_start=0, timestamp=datetime.now().isoformat()
+        connector_id=1,
+        id_tag="",
+        meter_start=0,
+        timestamp=datetime.datetime.now().isoformat(),
     )
     result: call_result.StartTransaction = await cp_simulator.call(request)
 
@@ -155,13 +160,16 @@ async def test_connect_and_start(
         1,
         ChargePointErrorCode.no_error,
         ChargePointStatus.preparing,
-        datetime.now().isoformat(),
+        datetime.datetime.now().isoformat(),
     )
     await cp_simulator.call(request)
     await asyncio.wait_for(cp_simulator.got_remote_start.acquire(), 2)
 
     start_request = call.StartTransaction(
-        connector_id=1, id_tag="", meter_start=0, timestamp=datetime.now().isoformat()
+        connector_id=1,
+        id_tag="",
+        meter_start=0,
+        timestamp=datetime.datetime.now().isoformat(),
     )
     result: call_result.StartTransaction = await cp_simulator.call(start_request)
     assert result.id_tag_info["status"] == AuthorizationStatus.accepted  # type: ignore[index]

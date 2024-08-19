@@ -4,20 +4,33 @@ import functools
 import json
 import logging
 
+import pytz
 import websockets
 from aiomqtt import Client, Will
 from ocpp.routing import after, on
 from ocpp.v16 import ChargePoint as cp
 from ocpp.v16 import call, call_result
-from ocpp.v16.datatypes import IdTagInfo
+from ocpp.v16.datatypes import (
+    ChargingProfile,
+    ChargingSchedule,
+    ChargingSchedulePeriod,
+    IdTagInfo,
+)
 from ocpp.v16.enums import (
     Action,
     AuthorizationStatus,
     ChargePointErrorCode,
     ChargePointStatus,
+    ChargingProfileKindType,
+    ChargingProfilePurposeType,
+    ChargingRateUnitType,
+    RecurrencyKind,
     RegistrationStatus,
 )
 from transitions.extensions import AsyncMachine
+from websockets.typing import Subprotocol
+
+from .util import next_datetime_at_time
 
 logger = logging.getLogger(__name__)
 
@@ -73,6 +86,33 @@ class MyChargePoint(cp):
             interval=10,
             status=RegistrationStatus.accepted,
         )
+
+    @after(Action.BootNotification)
+    async def after_boot_notification(self, **kwargs) -> None:
+        result: call_result.SetChargingProfile = await self.call(
+            call.SetChargingProfile(
+                connector_id=0,
+                cs_charging_profiles=ChargingProfile(
+                    charging_profile_id=1,
+                    stack_level=1,
+                    charging_profile_purpose=ChargingProfilePurposeType.tx_default_profile,
+                    charging_profile_kind=ChargingProfileKindType.recurring,
+                    recurrency_kind=RecurrencyKind.daily,
+                    charging_schedule=ChargingSchedule(
+                        ChargingRateUnitType.watts,
+                        [
+                            ChargingSchedulePeriod(0, 7200),
+                        ],
+                        duration=18000,
+                        start_schedule=next_datetime_at_time(
+                            datetime.time(0, 30, tzinfo=pytz.timezone("Europe/London"))
+                        ).isoformat(),
+                    ),
+                ),
+            )
+        )
+
+        self.logger.debug("Set charging profile %s", result.status)
 
     @on(Action.heartbeat)
     async def on_heartbeat(self):
@@ -177,7 +217,12 @@ async def on_connect(websocket, path, mqtt_client):
 async def start_ocpp(mqtt_client: Client):
     handler = functools.partial(on_connect, mqtt_client=mqtt_client)
 
-    server = await websockets.serve(handler, "0.0.0.0", 9000, subprotocols=["ocpp1.6"])
+    server = await websockets.serve(
+        handler,
+        "0.0.0.0",
+        9000,
+        subprotocols=[Subprotocol("ocpp1.6")],
+    )
 
     await server.wait_closed()
 
