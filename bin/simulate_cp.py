@@ -3,9 +3,10 @@ import asyncio
 import logging
 
 import websockets
+from ocpp.routing import on
 from ocpp.v16 import ChargePoint as cp
-from ocpp.v16 import call
-from ocpp.v16.enums import RegistrationStatus
+from ocpp.v16 import call, call_result
+from ocpp.v16.enums import Action, ChargingProfileStatus, RegistrationStatus
 
 logging.basicConfig(level=logging.INFO)
 
@@ -41,6 +42,12 @@ class ChargePointSimulator(cp):
             request = call.Heartbeat()
             await self.call(request)
             await asyncio.sleep(arguments["heartbeat_interval"])
+
+    @on(Action.set_charging_profile)
+    async def on_set_charging_profile(self, **kwargs):
+        logging.info("Charging profile set")
+
+        return call_result.SetChargingProfile(ChargingProfileStatus.accepted)
 
 
 async def main(arguments):
