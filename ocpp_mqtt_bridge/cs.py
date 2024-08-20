@@ -195,6 +195,32 @@ class MyChargePoint(cp):
                 "Recieved mqtt message on %s: %s", message.topic, message.payload
             )
 
+            if message.topic == f"ocpp/{self.id}/charge_limit":
+                await self.set_baseline_power_limit(int(float(str(message.payload))))
+
+    async def set_baseline_power_limit(self, limit: int) -> None:
+        result: call_result.SetChargingProfile = await self.call(
+            call.SetChargingProfile(
+                connector_id=0,
+                cs_charging_profiles=ChargingProfile(
+                    charging_profile_id=2,
+                    stack_level=0,
+                    charging_profile_purpose=ChargingProfilePurposeType.tx_default_profile,
+                    charging_profile_kind=ChargingProfileKindType.absolute,
+                    charging_schedule=ChargingSchedule(
+                        ChargingRateUnitType.watts,
+                        [
+                            ChargingSchedulePeriod(0, limit),
+                        ],
+                    ),
+                ),
+            )
+        )
+
+        self.logger.debug(
+            "Set baseline power charging profile to %d W: %s", result.status
+        )
+
 
 async def on_connect(websocket, path, mqtt_client):
     """For every new charge point that connects, create a ChargePoint instance
