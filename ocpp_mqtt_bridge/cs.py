@@ -195,8 +195,10 @@ class MyChargePoint(cp):
                 "Recieved mqtt message on %s: %s", message.topic, message.payload
             )
 
-            if message.topic == f"ocpp/{self.id}/charge_limit":
-                await self.set_baseline_power_limit(int(float(str(message.payload))))
+            if message.topic.value == f"ocpp/{self.id}/charge_limit":
+                await self.set_baseline_power_limit(
+                    int(float(str(message.payload.decode())))
+                )
 
     async def set_baseline_power_limit(self, limit: int) -> None:
         result: call_result.SetChargingProfile = await self.call(
