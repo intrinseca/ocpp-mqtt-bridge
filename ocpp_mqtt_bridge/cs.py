@@ -229,7 +229,7 @@ async def on_connect(websocket, path, mqtt_client):
     and start listening for messages.
 
     """
-    charge_point_id = path.strip("/")
+    charge_point_id = path.strip("/").split("/")[-1]
     cp = MyChargePoint(charge_point_id, websocket, mqtt_client)
 
     default_machine.add_model(cp)

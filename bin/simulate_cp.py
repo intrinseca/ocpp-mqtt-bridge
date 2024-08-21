@@ -53,7 +53,7 @@ class ChargePointSimulator(cp):
 async def main(arguments):
     try:
         async with websockets.connect(
-            f"{arguments['url']}/{arguments['cp_id']}",
+            f"{arguments['url']}/CentralSystem/{arguments['cp_id']}",
             subprotocols=["ocpp1.6"],
         ) as ws:
             cp = ChargePointSimulator(arguments["cp_id"], ws)
