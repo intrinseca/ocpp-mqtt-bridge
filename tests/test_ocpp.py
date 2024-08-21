@@ -11,12 +11,14 @@ from aiomqtt import Client
 from ocpp.routing import after, on
 from ocpp.v16 import ChargePoint as cp
 from ocpp.v16 import call, call_result
+from ocpp.v16.datatypes import MeterValue, SampledValue
 from ocpp.v16.enums import (
     Action,
     AuthorizationStatus,
     ChargePointErrorCode,
     ChargePointStatus,
     ChargingProfileStatus,
+    Measurand,
     RegistrationStatus,
     RemoteStartStopStatus,
 )
@@ -160,6 +162,26 @@ async def test_start(cp_simulator: ChargePointSimulator, patch_datetime_now) -> 
     result: call_result.StartTransaction = await cp_simulator.call(request)
 
     assert result.id_tag_info["status"] == AuthorizationStatus.accepted  # type: ignore[index]
+
+
+@pytest.mark.asyncio
+async def test_metervalues(
+    cp_simulator: ChargePointSimulator, patch_datetime_now
+) -> None:
+    request = call.MeterValues(
+        connector_id=1,
+        meter_value=[
+            MeterValue(
+                timestamp=datetime.datetime.now().isoformat(),
+                sampled_value=[
+                    SampledValue(value="1000", measurand=Measurand.power_active_export)
+                ],
+            )
+        ],
+    )
+    result: call_result.MeterValues = await cp_simulator.call(request)
+
+    assert result is not None
 
 
 @pytest.mark.asyncio

@@ -223,6 +223,18 @@ class MyChargePoint(cp):
             "Set baseline power charging profile to %d W: %s", result.status
         )
 
+    @on(Action.meter_values)
+    async def on_meter_values(self, connector_id, meter_value, **kwargs):
+        self.logger.debug("Meter Values %r", meter_value)
+        return call_result.MeterValues()
+
+    @after(Action.meter_values)
+    async def after_meter_values(self, connector_id, meter_value, **kwargs):
+        for sample in meter_value["sampled_value"]:
+            await self.mqtt_client.publish(
+                f"ocpp/{self.id}/{sample['measurand']}", sample["value"]
+            )
+
 
 async def on_connect(websocket, path, mqtt_client):
     """For every new charge point that connects, create a ChargePoint instance
