@@ -48,6 +48,7 @@ async def ws_client():
 class ChargePointSimulator(cp):
     def __init__(self, *args, **kwargs):
         self.got_remote_start = asyncio.Semaphore(value=0)
+        self.got_charging_profile = asyncio.Semaphore(value=0)
         super().__init__(*args, **kwargs)
 
     async def send_heartbeat(self, arguments):
@@ -72,9 +73,18 @@ class ChargePointSimulator(cp):
     async def after_remote_start(self, id_tag: str, **kwargs):
         self.got_remote_start.release()
 
-    @on(Action.SetChargingProfile)
-    async def set_charging_profile(self, **kwargs):
+    @on(Action.set_charging_profile)
+    async def on_set_charging_profile(
+        self, connector_id, cs_charging_profiles, **kwargs
+    ):
         return call_result.SetChargingProfile(ChargingProfileStatus.accepted)
+
+    @after(Action.set_charging_profile)
+    async def after_charging_profile(
+        self, connector_id, cs_charging_profiles, **kwargs
+    ):
+        self.charging_profile = cs_charging_profiles
+        self.got_charging_profile.release()
 
 
 @pytest_asyncio.fixture
@@ -173,3 +183,18 @@ async def test_connect_and_start(
     )
     result: call_result.StartTransaction = await cp_simulator.call(start_request)
     assert result.id_tag_info["status"] == AuthorizationStatus.accepted  # type: ignore[index]
+
+
+@pytest.mark.asyncio
+async def test_connect_and_profile(
+    cp_simulator: ChargePointSimulator, patch_datetime_now
+) -> None:
+    request = call.BootNotification(
+        charge_point_model="DummyChargePoint",
+        charge_point_vendor="Test",
+    )
+    await cp_simulator.call(request)
+
+    await asyncio.wait_for(cp_simulator.got_charging_profile.acquire(), 1)
+
+    assert cp_simulator.charging_profile is not None
