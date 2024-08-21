@@ -1,28 +1,18 @@
 import datetime
 
-import pytz
+from zoneinfo import ZoneInfo
 
 
-def next_datetime_at_time(target_time: datetime.time) -> datetime.datetime:
+def today_at(target_time: datetime.time) -> datetime.datetime:
     # Define the timezones
-    london_tz = pytz.timezone("Europe/London")
-    utc_tz = pytz.utc
 
-    # Get the current time in the London timezone
+    london_tz = ZoneInfo("Europe/London")
     now = datetime.datetime.now(london_tz)
 
-    # Combine the current date with the target time in the London timezone
-    today_target = datetime.datetime.combine(now.date(), target_time).astimezone(
-        london_tz
-    )
+    # Create a datetime object for 00:30 today in the London timezone
+    result = datetime.datetime.combine(now, target_time)
 
-    if now > today_target:
-        # If the target time has already passed today,
-        # return the target time for tomorrow
-        next_target = today_target + datetime.timedelta(days=1)
-    else:
-        # Otherwise, return the target time for today
-        next_target = today_target
+    # Convert the target time to UTC
+    utc_time = result.astimezone(datetime.timezone.utc)
 
-    # Convert the result to UTC
-    return next_target.astimezone(utc_tz)
+    return utc_time

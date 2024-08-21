@@ -248,4 +248,9 @@ async def test_connect_and_profile(
 
     await asyncio.wait_for(cp_simulator.got_charging_profile.acquire(), 1)
 
-    assert cp_simulator.charging_profile is not None
+    assert (
+        cp_simulator.charging_profile["charging_schedule"]["start_schedule"]
+        == "2024-01-02T00:30:00+00:00"
+    )
+
+    assert cp_simulator.charging_profile["charging_schedule"]["duration"] == 60 * 60 * 5

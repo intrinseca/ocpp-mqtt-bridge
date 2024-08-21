@@ -4,7 +4,6 @@ import functools
 import json
 import logging
 
-import pytz
 import websockets
 from aiomqtt import Client, Will
 from ocpp.routing import after, on
@@ -29,8 +28,9 @@ from ocpp.v16.enums import (
 )
 from transitions.extensions import AsyncMachine
 from websockets.typing import Subprotocol
+from zoneinfo import ZoneInfo
 
-from .util import next_datetime_at_time
+from .util import today_at
 
 logger = logging.getLogger(__name__)
 
@@ -104,8 +104,8 @@ class MyChargePoint(cp):
                             ChargingSchedulePeriod(0, 7200),
                         ],
                         duration=18000,
-                        start_schedule=next_datetime_at_time(
-                            datetime.time(0, 30, tzinfo=pytz.timezone("Europe/London"))
+                        start_schedule=today_at(
+                            datetime.time(0, 30, tzinfo=ZoneInfo("Europe/London"))
                         ).isoformat(),
                     ),
                 ),

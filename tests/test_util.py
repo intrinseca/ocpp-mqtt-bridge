@@ -1,64 +1,39 @@
-import datetime
-from datetime import time, timedelta
+from datetime import time
 
 import pytest
-import pytz
+from zoneinfo import ZoneInfo
 
-from ocpp_mqtt_bridge.util import next_datetime_at_time
-
-
-def test_next_datetime_same_day(patch_datetime_now):
-    target_time = time(14, 30)  # 2:30 PM London time, later today
-    result = next_datetime_at_time(target_time)
-
-    # The expected result should be today at 2:30 PM in UTC
-    expected_time = (
-        pytz.timezone("Europe/London")
-        .localize(
-            datetime.datetime.combine(datetime.datetime.now().date(), target_time)
-        )
-        .astimezone(pytz.utc)
-    )
-
-    assert result == expected_time
+from ocpp_mqtt_bridge.util import today_at
 
 
-def test_next_datetime_next_day(patch_datetime_now):
-    target_time = time(8, 0)  # 8:00 AM London time, earlier today
-    result = next_datetime_at_time(target_time)
+def test_next_datetime_same_day_winter(patch_datetime_now):
+    target_time = time(0, 30, tzinfo=ZoneInfo("Europe/London"))
 
-    # The expected result should be tomorrow at 8:00 AM in UTC
-    expected_time = (
-        pytz.timezone("Europe/London")
-        .localize(
-            datetime.datetime.combine(
-                datetime.datetime.now().date() + timedelta(days=1), target_time
-            )
-        )
-        .astimezone(pytz.utc)
-    )
+    result = today_at(target_time).isoformat()
 
-    assert result == expected_time
+    assert result == "2024-01-02T00:30:00+00:00"
 
 
-def test_midnight_transition(patch_datetime_now):
-    target_time = time(0, 0)  # Midnight
-    result = next_datetime_at_time(target_time)
+def test_next_datetime_same_day_summer(patch_datetime_now_summer):
+    target_time = time(0, 30, tzinfo=ZoneInfo("Europe/London"))
 
-    london_tz = pytz.timezone("Europe/London")
+    result = today_at(target_time).isoformat()
 
-    if datetime.datetime.now().time() > target_time:
-        # If it's past midnight today, the result should be tomorrow's midnight in UTC
-        expected_date = datetime.datetime.now().date() + timedelta(days=1)
-    else:
-        # Otherwise, it should be today's midnight in UTC
-        expected_date = datetime.datetime.now().date()
+    assert result == "2024-07-01T23:30:00+00:00"
 
-    expected_time = london_tz.localize(
-        datetime.datetime.combine(expected_date, target_time)
-    ).astimezone(pytz.utc)
 
-    assert result == expected_time
+def test_dst_transition(patch_datetime_now_dst):
+    target_time = time(0, 30, tzinfo=ZoneInfo("Europe/London"))
+
+    result = today_at(target_time).isoformat()
+
+    assert result == "2024-03-31T00:30:00+00:00"
+
+    target_time = time(5, 30, tzinfo=ZoneInfo("Europe/London"))
+
+    result = today_at(target_time).isoformat()
+
+    assert result == "2024-03-31T04:30:00+00:00"
 
 
 if __name__ == "__main__":
