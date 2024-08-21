@@ -1,0 +1,32 @@
+version = 1
+disable_existing_loggers = true
+
+[root]
+handlers = ['screen', 'file']
+level = 'DEBUG'
+
+[loggers."websockets.server"]
+level = 'INFO'
+
+[loggers."transitions"]
+level = 'INFO'
+
+[formatters.simple]
+format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+
+[formatters.complex]
+format = "%(asctime)s - %(name)s - %(levelname)s - %(module)s : %(lineno)d - %(message)s"
+
+[handlers.file]
+class = "logging.handlers.TimedRotatingFileHandler"
+when = "midnight"
+backupCount = 5
+formatter = "complex"
+level = "DEBUG"
+filename = 'logs/ocpp-mqtt-bridge.log'
+
+[handlers.screen]
+class = "logging.StreamHandler"
+formatter = "simple"
+level = "DEBUG"
+stream = "ext://sys.stdout"
