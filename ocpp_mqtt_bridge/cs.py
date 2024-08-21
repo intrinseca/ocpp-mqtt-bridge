@@ -126,6 +126,20 @@ class MyChargePoint(cp):
             current_time=datetime.datetime.now(datetime.UTC).isoformat(),
         )
 
+    @after(Action.heartbeat)
+    async def after_heartbeat(self) -> None:
+        result: call_result.GetCompositeSchedule = await self.call(
+            call.GetCompositeSchedule(
+                connector_id=1,
+                duration=60 * 60 * 24,
+                charging_rate_unit=ChargingRateUnitType.watts,
+            )
+        )
+
+        self.logger.info(
+            "Composite Schedule: %s %r", result.status, result.charging_schedule
+        )
+
     @on(Action.status_notification)
     async def on_status_notification(
         self,
