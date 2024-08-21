@@ -221,10 +221,18 @@ class MyChargePoint(cp):
 
     @after(Action.meter_values)
     async def after_meter_values(self, connector_id, meter_value, **kwargs):
-        for sample in meter_value["sampled_value"]:
-            await self.mqtt_client.publish(
-                f"ocpp/{self.id}/{sample['measurand']}", sample["value"]
-            )
+        for sample in meter_value:
+            for value in sample["sampled_value"]:
+                await self.mqtt_client.publish(
+                    f"ocpp/{self.id}/{value['measurand'].replace(".", "-")}",
+                    json.dumps(
+                        {
+                            "timestamp": sample["timestamp"],
+                            "value": value["value"],
+                            "unit": value["unit"],
+                        }
+                    ),
+                )
 
 
 async def on_connect(websocket, path, mqtt_client):

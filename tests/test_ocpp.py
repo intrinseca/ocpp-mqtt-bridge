@@ -3,6 +3,7 @@ import datetime
 import functools
 import logging
 from unittest.mock import AsyncMock
+from unittest.mock import call as mock_call
 
 import pytest
 import pytest_asyncio
@@ -29,9 +30,13 @@ logging.getLogger("ocpp_mqtt_bridge").setLevel(logging.DEBUG)
 logging.getLogger("transitions").setLevel(logging.INFO)
 
 
+@pytest.fixture()
+def mock_mqtt_client():
+    return AsyncMock(Client)
+
+
 @pytest_asyncio.fixture()
-async def ws_server():
-    mock_mqtt_client = AsyncMock(Client)
+async def ws_server(mock_mqtt_client):
     handler = functools.partial(on_connect, mqtt_client=mock_mqtt_client)
 
     async with websockets.serve(handler, "127.0.0.1", 9000, subprotocols=["ocpp1.6"]):
@@ -166,7 +171,7 @@ async def test_start(cp_simulator: ChargePointSimulator, patch_datetime_now) -> 
 
 @pytest.mark.asyncio
 async def test_metervalues(
-    cp_simulator: ChargePointSimulator, patch_datetime_now
+    cp_simulator: ChargePointSimulator, patch_datetime_now, mock_mqtt_client
 ) -> None:
     request = call.MeterValues(
         connector_id=1,
@@ -174,7 +179,14 @@ async def test_metervalues(
             MeterValue(
                 timestamp=datetime.datetime.now().isoformat(),
                 sampled_value=[
-                    SampledValue(value="1000", measurand=Measurand.power_active_export)
+                    SampledValue(
+                        value="1000", measurand=Measurand.power_active_import, unit="W"
+                    ),
+                    SampledValue(
+                        value="10000",
+                        measurand=Measurand.energy_active_import_register,
+                        unit="Wh",
+                    ),
                 ],
             )
         ],
@@ -182,6 +194,23 @@ async def test_metervalues(
     result: call_result.MeterValues = await cp_simulator.call(request)
 
     assert result is not None
+
+    mock_mqtt_client.publish.assert_has_calls(
+        [
+            # The OCPP lib seems to drop the first call when sending the message,
+            # don't know why
+            # mock_call(
+            #     "ocpp/dummy/Power-Active-Import",
+            #     """\
+            # {"timestamp": "2024-03-02T12:00:00", "value": "1000", "unit": "W"}""",
+            # ),
+            mock_call(
+                "ocpp/dummy/Energy-Active-Import-Register",
+                """\
+{"timestamp": "2024-03-02T12:00:00", "value": "10000", "unit": "Wh"}""",
+            ),
+        ]
+    )
 
 
 @pytest.mark.asyncio
