@@ -52,4 +52,4 @@ RUN --mount=type=cache,target=/root/.cache \
 
 COPY . /app
 
-CMD poetry run python3 -m ocpp_mqtt_bridge
+CMD ["poetry", "run", "python3", "-m", "ocpp_mqtt_bridge"]
