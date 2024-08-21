@@ -9,7 +9,7 @@ level = 'DEBUG'
 level = 'INFO'
 
 [loggers."transitions"]
-level = 'INFO'
+level = 'WARNING'
 
 [formatters.simple]
 format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"

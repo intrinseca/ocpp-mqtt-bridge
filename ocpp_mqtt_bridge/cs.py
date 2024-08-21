@@ -71,7 +71,7 @@ class MyChargePoint(cp):
         self, charge_point_vendor: str, charge_point_model: str, **kwargs
     ):
         self.logger.debug(
-            "Received boot, %s %s",
+            "Boot from %s %s",
             charge_point_vendor,
             charge_point_model,
         )
@@ -112,11 +112,11 @@ class MyChargePoint(cp):
             )
         )
 
-        self.logger.debug("Set charging profile %s", result.status)
+        self.logger.debug("Charging profile set: %s", result.status)
 
     @on(Action.heartbeat)
     async def on_heartbeat(self):
-        self.logger.debug("Received heartbeat")
+        self.logger.debug("Heartbeat")
 
         await self.mqtt_client.publish(
             f"ocpp/{self.id}/heartbeat", datetime.datetime.now(datetime.UTC).isoformat()
@@ -135,7 +135,7 @@ class MyChargePoint(cp):
         **kwargs,
     ):
         self.logger.debug(
-            "Received status notification, connector %d %s %s",
+            "Status: connector %d %s %s",
             connector_id,
             error_code,
             status,
@@ -153,13 +153,6 @@ class MyChargePoint(cp):
         status: ChargePointStatus,
         **kwargs,
     ):
-        self.logger.debug(
-            "After status notification, connector %d %s %s",
-            connector_id,
-            error_code,
-            status,
-        )
-
         await self.trigger(status)  # type:ignore[attr-defined]
 
     async def on_state_change(self):
@@ -185,7 +178,7 @@ class MyChargePoint(cp):
         result: call_result.RemoteStartTransaction = await self.call(
             call.RemoteStartTransaction("noIdTag")
         )
-        self.logger.debug("Remote start %s", result.status)
+        self.logger.debug("Remote start: %s", result.status)
 
     async def mqtt_consumer(self) -> None:
         await self.mqtt_client.subscribe(f"ocpp/{self.id}/charge_limit")
@@ -219,13 +212,11 @@ class MyChargePoint(cp):
             )
         )
 
-        self.logger.debug(
-            "Set baseline power charging profile to %d W: %s", result.status
-        )
+        self.logger.debug("Set baseline profile to %d W: %s", result.status)
 
     @on(Action.meter_values)
     async def on_meter_values(self, connector_id, meter_value, **kwargs):
-        self.logger.debug("Meter Values %r", meter_value)
+        self.logger.debug("Meter Values: %r", meter_value)
         return call_result.MeterValues()
 
     @after(Action.meter_values)
