@@ -212,7 +212,7 @@ class MyChargePoint(cp):
             )
         )
 
-        self.logger.debug("Set baseline profile to %d W: %s", result.status)
+        self.logger.debug("Set baseline profile to %d W: %s", limit, result.status)
 
     @on(Action.meter_values)
     async def on_meter_values(self, connector_id, meter_value, **kwargs):
