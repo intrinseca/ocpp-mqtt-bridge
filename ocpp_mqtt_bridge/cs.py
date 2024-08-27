@@ -93,6 +93,9 @@ class MyChargePoint(cp):
         await self.mqtt_client.register(self.boot_sensor)
         await self.mqtt_client.register(self.heartbeat_sensor)
         await self.mqtt_client.register(self.connector_status_sensor)
+        await self.mqtt_client.register(self.state_sensor)
+        await self.mqtt_client.register(self.energy_meter_sensor)
+        await self.mqtt_client.register(self.power_sensor)
 
         await self.boot_sensor.publish(
             json.dumps({"vendor": charge_point_vendor, "model": charge_point_model})
