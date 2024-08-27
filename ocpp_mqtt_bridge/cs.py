@@ -23,6 +23,7 @@ from ocpp.v16.enums import (
     ChargingProfileKindType,
     ChargingProfilePurposeType,
     ChargingRateUnitType,
+    MessageTrigger,
     RecurrencyKind,
     RegistrationStatus,
 )
@@ -89,6 +90,12 @@ class MyChargePoint(cp):
 
     @after(Action.BootNotification)
     async def after_boot_notification(self, **kwargs) -> None:
+        trigger_result: call_result.TriggerMessage = await self.call(
+            call.TriggerMessage(MessageTrigger.meter_values)
+        )
+
+        self.logger.debug("Requested meter values: %s", trigger_result.status)
+
         result: call_result.SetChargingProfile = await self.call(
             call.SetChargingProfile(
                 connector_id=0,
