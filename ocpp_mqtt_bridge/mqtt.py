@@ -23,7 +23,7 @@ class Entity:
         if self.client is None:
             raise ValueError("Cannot publish on unregistered entity")
         else:
-            await self.client.publish(self.topic, str(value))
+            await self.client.publish(self.topic, str(value), retain=True)
 
 
 class Sensor(Entity):
