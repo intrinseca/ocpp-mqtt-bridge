@@ -109,12 +109,6 @@ class MyChargePoint(cp):
 
     @after(Action.BootNotification)
     async def after_boot_notification(self, **kwargs) -> None:
-        trigger_result: call_result.TriggerMessage = await self.call(
-            call.TriggerMessage(MessageTrigger.meter_values)
-        )
-
-        self.logger.debug("Requested meter values: %s", trigger_result.status)
-
         result: call_result.SetChargingProfile = await self.call(
             call.SetChargingProfile(
                 connector_id=0,
@@ -165,6 +159,12 @@ class MyChargePoint(cp):
         self.logger.info(
             "Composite Schedule: %s %r", result.status, result.charging_schedule
         )
+
+        trigger_result: call_result.TriggerMessage = await self.call(
+            call.TriggerMessage(MessageTrigger.meter_values)
+        )
+
+        self.logger.debug("Requested meter values: %s", trigger_result.status)
 
     @on(Action.status_notification)
     async def on_status_notification(
