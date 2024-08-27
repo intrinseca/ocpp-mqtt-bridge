@@ -3,11 +3,16 @@ import logging.config
 import os
 import sys
 
+import click
 import tomllib
 
-from .cs import main
+from .cs import run_cs
 
-if __name__ == "__main__":
+
+@click.command()
+@click.option("--hostname", "-h", required=True, help="The hostname of the MQTT server")
+@click.option("--prefix", "-p", default="ocpp", help="MQTT topic prefix")
+def main(hostname, prefix):
     os.makedirs("logs", exist_ok=True)
 
     with open("logging_config.toml", "rb") as logging_config_file:
@@ -21,4 +26,8 @@ if __name__ == "__main__":
 
         set_event_loop_policy(WindowsSelectorEventLoopPolicy())
 
-    asyncio.run(main())
+    asyncio.run(run_cs(hostname, prefix))
+
+
+if __name__ == "__main__":
+    main()

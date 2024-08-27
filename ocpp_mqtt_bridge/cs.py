@@ -66,11 +66,11 @@ class MyChargePoint(cp):
         self.logger = logging.getLogger(f"{__name__}.{id}")
         self.mqtt_client = mqtt_client
 
+        super().__init__(id, connection, response_timeout)
+
         self.charging_limit_number = Number(
             self.id, "charging_limit", set_handler=self.set_baseline_power_limit
         )
-
-        super().__init__(id, connection, response_timeout)
 
     @on(Action.boot_notification)
     async def on_boot_notification(
@@ -264,7 +264,7 @@ async def on_connect(websocket, path, mqtt_client):
     logger.debug("CP %s connected", charge_point_id)
 
     try:
-        await asyncio.gather(cp.start(), cp.mqtt_consumer())
+        await cp.start()
     except websockets.exceptions.ConnectionClosedOK:
         logger.debug("CP %s disconnected", charge_point_id)
 
@@ -282,6 +282,6 @@ async def start_ocpp(mqtt_client: Client):
     await server.wait_closed()
 
 
-async def main():
-    client = HAMQTTClient("mqtt.home.larkspur.me.uk")
-    await asyncio.gather(client.connect(), cp.mqtt_consumer())
+async def run_cs(hostname, prefix):
+    client = HAMQTTClient(prefix=prefix, hostname=hostname)
+    await asyncio.gather(client.connect(), start_ocpp(client))

@@ -6,7 +6,12 @@ import websockets
 from ocpp.routing import on
 from ocpp.v16 import ChargePoint as cp
 from ocpp.v16 import call, call_result
-from ocpp.v16.enums import Action, ChargingProfileStatus, RegistrationStatus
+from ocpp.v16.enums import (
+    Action,
+    ChargingProfileStatus,
+    GetCompositeScheduleStatus,
+    RegistrationStatus,
+)
 
 logging.basicConfig(level=logging.INFO)
 
@@ -48,6 +53,10 @@ class ChargePointSimulator(cp):
         logging.info("Charging profile set")
 
         return call_result.SetChargingProfile(ChargingProfileStatus.accepted)
+
+    @on(Action.get_composite_schedule)
+    async def on_get_charging_profile(self, **kwargs):
+        return call_result.GetCompositeSchedule(GetCompositeScheduleStatus.rejected)
 
 
 async def main(arguments):

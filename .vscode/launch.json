@@ -19,7 +19,13 @@
             "name": "CS",
             "type": "debugpy",
             "request": "launch",
-            "module": "ocpp_mqtt_bridge"
+            "module": "ocpp_mqtt_bridge",
+            "args": [
+                "-h",
+                "mqtt.home.larkspur.me.uk",
+                "-p",
+                "ocpp_test"
+            ]
         }
     ]
 }

@@ -13,6 +13,7 @@ websockets = "^12.0"
 transitions = "^0.9.1"
 aiomqtt = "^2.3.0"
 tzdata = "^2024.1"
+click = "^8.1.7"
 
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.6.0"

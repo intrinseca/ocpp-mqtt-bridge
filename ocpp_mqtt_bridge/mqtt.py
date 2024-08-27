@@ -62,8 +62,9 @@ class HAMQTTClient(aiomqtt.Client):
         self.entities[entity.topic] = entity
 
         if isinstance(entity, SetEntity):
-            logger.debug("Subscribing to %s", entity.set_topic)
-            await self.subscribe(entity.set_topic)
+            t = self.topic(entity.set_topic)
+            logger.debug("Subscribing to %s", t)
+            await self.subscribe(t)
 
         entity.client = self
 
@@ -90,7 +91,7 @@ class HAMQTTClient(aiomqtt.Client):
                 topic = message.topic.value
 
                 if topic.endswith("/set"):
-                    topic = topic.removesuffix("/set")
+                    topic = topic.removesuffix("/set").removeprefix(self.prefix + "/")
 
                 if (set_entity := self.entities.get(topic)) is not None:
                     if isinstance(set_entity, SetEntity):
