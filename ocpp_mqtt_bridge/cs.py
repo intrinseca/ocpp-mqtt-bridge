@@ -31,7 +31,7 @@ from transitions.extensions import AsyncMachine
 from websockets.typing import Subprotocol
 from zoneinfo import ZoneInfo
 
-from .mqtt import HAMQTTClient, Number
+from .mqtt import HAMQTTClient, Number, Sensor
 from .util import today_at
 
 logger = logging.getLogger(__name__)
@@ -72,6 +72,13 @@ class MyChargePoint(cp):
             self.id, "charging_limit", set_handler=self.set_baseline_power_limit
         )
 
+        self.boot_sensor = Sensor(self.id, "boot")
+        self.heartbeat_sensor = Sensor(self.id, "heartbeat")
+        self.connector_status_sensor = Sensor(self.id, "connector_status")
+        self.state_sensor = Sensor(self.id, "state")
+        self.energy_meter_sensor = Sensor(self.id, "energy_meter")
+        self.power_sensor = Sensor(self.id, "power")
+
     @on(Action.boot_notification)
     async def on_boot_notification(
         self, charge_point_vendor: str, charge_point_model: str, **kwargs
@@ -83,10 +90,12 @@ class MyChargePoint(cp):
         )
 
         await self.mqtt_client.register(self.charging_limit_number)
+        await self.mqtt_client.register(self.boot_sensor)
+        await self.mqtt_client.register(self.heartbeat_sensor)
+        await self.mqtt_client.register(self.connector_status_sensor)
 
-        await self.mqtt_client.publish(
-            f"ocpp/{self.id}/boot",
-            json.dumps({"vendor": charge_point_vendor, "model": charge_point_model}),
+        await self.boot_sensor.publish(
+            json.dumps({"vendor": charge_point_vendor, "model": charge_point_model})
         )
 
         return call_result.BootNotification(
@@ -132,8 +141,8 @@ class MyChargePoint(cp):
     async def on_heartbeat(self):
         self.logger.debug("Heartbeat")
 
-        await self.mqtt_client.publish(
-            f"ocpp/{self.id}/heartbeat", datetime.datetime.now(datetime.UTC).isoformat()
+        await self.heartbeat_sensor.publish(
+            datetime.datetime.now(datetime.UTC).isoformat()
         )
 
         return call_result.Heartbeat(
@@ -169,7 +178,7 @@ class MyChargePoint(cp):
             status,
         )
 
-        await self.mqtt_client.publish(f"ocpp/{self.id}/connector_status", status)
+        await self.connector_status_sensor.publish(status)
 
         return call_result.StatusNotification()
 
@@ -184,7 +193,7 @@ class MyChargePoint(cp):
         await self.trigger(status)  # type:ignore[attr-defined]
 
     async def on_state_change(self):
-        await self.mqtt_client.publish(f"ocpp/{self.id}/state", self.state)
+        await self.state_sensor.publish(self.state)
 
     @on(Action.start_transaction)
     async def on_start_transaction(
@@ -237,18 +246,13 @@ class MyChargePoint(cp):
 
     @after(Action.meter_values)
     async def after_meter_values(self, connector_id, meter_value, **kwargs):
-        for sample in meter_value:
-            for value in sample["sampled_value"]:
-                await self.mqtt_client.publish(
-                    f"ocpp/{self.id}/{value['measurand'].replace(".", "-")}",
-                    json.dumps(
-                        {
-                            "timestamp": sample["timestamp"],
-                            "value": value["value"],
-                            "unit": value["unit"],
-                        }
-                    ),
-                )
+        latest_sample = max(meter_value, key=lambda m: m["timestamp"])
+
+        for value in latest_sample["sampled_value"]:
+            if value["measurand"] == "Energy.Active.Import.Register":
+                await self.energy_meter_sensor.publish(value["value"])
+            elif value["measurand"] == "Power.Active.Import":
+                await self.power_sensor.publish(value["value"])
 
 
 async def on_connect(websocket, path, mqtt_client):
