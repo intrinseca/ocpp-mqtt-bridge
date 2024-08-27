@@ -5,7 +5,7 @@ import json
 import logging
 
 import websockets
-from aiomqtt import Client, Will
+from aiomqtt import Client
 from ocpp.routing import after, on
 from ocpp.v16 import ChargePoint as cp
 from ocpp.v16 import call, call_result
@@ -31,6 +31,7 @@ from transitions.extensions import AsyncMachine
 from websockets.typing import Subprotocol
 from zoneinfo import ZoneInfo
 
+from .mqtt import HAMQTTClient, Number
 from .util import today_at
 
 logger = logging.getLogger(__name__)
@@ -61,9 +62,13 @@ default_machine = AsyncMachine(
 
 
 class MyChargePoint(cp):
-    def __init__(self, id, connection, mqtt_client: Client, response_timeout=30):  # noqa: A002
+    def __init__(self, id, connection, mqtt_client: HAMQTTClient, response_timeout=30):  # noqa: A002
         self.logger = logging.getLogger(f"{__name__}.{id}")
         self.mqtt_client = mqtt_client
+
+        self.charging_limit_number = Number(
+            self.id, "charging_limit", set_handler=self.set_baseline_power_limit
+        )
 
         super().__init__(id, connection, response_timeout)
 
@@ -76,6 +81,8 @@ class MyChargePoint(cp):
             charge_point_vendor,
             charge_point_model,
         )
+
+        await self.mqtt_client.register(self.charging_limit_number)
 
         await self.mqtt_client.publish(
             f"ocpp/{self.id}/boot",
@@ -201,19 +208,6 @@ class MyChargePoint(cp):
         )
         self.logger.debug("Remote start: %s", result.status)
 
-    async def mqtt_consumer(self) -> None:
-        await self.mqtt_client.subscribe(f"ocpp/{self.id}/charge_limit")
-
-        async for message in self.mqtt_client.messages:
-            self.logger.debug(
-                "Recieved mqtt message on %s: %s", message.topic, message.payload
-            )
-
-            if message.topic.value == f"ocpp/{self.id}/charge_limit":
-                await self.set_baseline_power_limit(
-                    int(float(str(message.payload.decode())))
-                )
-
     async def set_baseline_power_limit(self, limit: int) -> None:
         result: call_result.SetChargingProfile = await self.call(
             call.SetChargingProfile(
@@ -234,6 +228,7 @@ class MyChargePoint(cp):
         )
 
         self.logger.debug("Set baseline profile to %d W: %s", limit, result.status)
+        await self.charging_limit_number.publish(limit)
 
     @on(Action.meter_values)
     async def on_meter_values(self, connector_id, meter_value, **kwargs):
@@ -288,8 +283,5 @@ async def start_ocpp(mqtt_client: Client):
 
 
 async def main():
-    async with Client(
-        "mqtt.home.larkspur.me.uk", will=Will("ocpp/online", "OFF")
-    ) as client:
-        await client.publish("ocpp/online", "ON")
-        await start_ocpp(client)
+    client = HAMQTTClient("mqtt.home.larkspur.me.uk")
+    await asyncio.gather(client.connect(), cp.mqtt_consumer())
