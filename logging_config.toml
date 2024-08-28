@@ -11,17 +11,18 @@ level = 'INFO'
 [loggers."transitions"]
 level = 'WARNING'
 
-[formatters.simple]
-format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+[loggers."ocpp"]
+level = 'WARNING'
 
-[formatters.complex]
-format = "%(asctime)s - %(name)s - %(levelname)s - %(module)s : %(lineno)d - %(message)s"
+[formatters.simple]
+format = "%(asctime)s [%(levelname)-8s] %(name)s - %(message)s"
+datefmt = '%Y-%m-%d %H:%M:%S'
 
 [handlers.file]
 class = "logging.handlers.TimedRotatingFileHandler"
 when = "midnight"
 backupCount = 5
-formatter = "complex"
+formatter = "simple"
 level = "DEBUG"
 filename = 'logs/ocpp-mqtt-bridge.log'
 
