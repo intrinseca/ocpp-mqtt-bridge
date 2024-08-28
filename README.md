@@ -11,11 +11,10 @@ This project implements an OCPP (Open Charge Point Protocol) Central Station and
 
 ## Features
 
-- **OCPP Central Station**: Full implementation of OCPP 1.6 and 2.0.
+- **OCPP Central Station**: Implementation of OCPP 1.6.
 - **MQTT Bridge**: Translates OCPP messages to MQTT topics.
 - **Home Assistant Integration**: Easy setup with Home Assistant for real-time monitoring and control.
 - **Docker Support**: Easily deployable with Docker.
-- **Extensible**: Designed to be extended with new features and protocols.
 
 ## Compatibility
 
@@ -33,65 +32,35 @@ This project is tested with:
 
 ### Installation
 
-1. Clone the repository:
+1. Build and run the Docker container:
     ```bash
-    git clone https://github.com/intrinseca/ocpp-mqtt-bridge.git
-    cd ocpp-mqtt-bridge
+    docker run -d ghcr.io/intrinseca/ocpp-mqtt-bridge:main -h mqtt-broker-hostname.example
     ```
 
-2. Build and run the Docker container:
-    ```bash
-    docker-compose up --build -d
-    ```
+2. Connect your EV chargers to the OCPP Central Station using the provided URL.
 
-3. Configure your MQTT broker details in the `config.yaml` file.
-
-4. Connect your EV chargers to the OCPP Central Station using the provided URL.
-
-### Configuration
-
-Update the `config.yaml` file with your MQTT broker details and other configuration parameters.
+Alternatively, use `docker-compose`:
 
 ```yaml
-mqtt:
-  broker: 'mqtt://your_broker_address'
-  username: 'your_username'
-  password: 'your_password'
-  topic_prefix: 'ocpp'
-
-ocpp:
-  port: 8082
+services:
+  ocpp:
+    image: ghcr.io/intrinseca/ocpp-mqtt-bridge:main
+    container_name: ocpp
+    ports:
+      - "9000:9000" # map the websocket port you will program into the charge point
+    volumes:
+      - './logs:/app/logs'
+    restart: always
+    command: "-h mqtt-broker-hostname.example -p ocpp" # set to the address/hostname of your MQTT broker and the top-level MQTT topic to use
 ```
 
 ### Home Assistant Integration
 
+(Not yet implemented)
+
 Home Assistant integration is facilitated via MQTT discovery. Ensure your MQTT broker is correctly configured in Home Assistant.
 
-Add the following configuration to your `configuration.yaml` in Home Assistant:
-
-```yaml
-mqtt:
-  broker: 'your_broker_address'
-  username: 'your_username'
-  password: 'your_password'
-
-# Example configuration for MQTT discovery
-homeassistant:
-  mqtt:
-    discovery: true
-    discovery_prefix: homeassistant
-```
-
 MQTT discovery will automatically add your EV chargers as devices in Home Assistant.
-
-## Usage
-
-- Start the central station:
-    ```bash
-    docker-compose up
-    ```
-- Connect your EV chargers using the OCPP protocol.
-- Monitor and control your chargers through Home Assistant.
 
 ## Development
 
@@ -108,5 +77,5 @@ For questions or support, open an issue on [GitHub](https://github.com/intrinsec
 ## Acknowledgements
 
 - [mobilityhouse ocpp](https://github.com/mobilityhouse/ocpp) for the OCPP implementation.
-- [asyncio-mqtt](https://github.com/sbtinstruments/asyncio-mqtt) for the MQTT client.
+- [aiomqtt](https://aiomqtt.felixboehm.dev/) for the MQTT client.
 - The Home Assistant community for their support and documentation.
