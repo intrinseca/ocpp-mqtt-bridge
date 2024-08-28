@@ -24,6 +24,7 @@ from ocpp.v16.enums import (
     ChargingProfilePurposeType,
     ChargingRateUnitType,
     MessageTrigger,
+    Reason,
     RecurrencyKind,
     RegistrationStatus,
 )
@@ -78,6 +79,8 @@ class MyChargePoint(cp):
         self.state_sensor = Sensor(self.id, "state")
         self.energy_meter_sensor = Sensor(self.id, "energy_meter")
         self.power_sensor = Sensor(self.id, "power")
+        self.meter_start_sensor = Sensor(self.id, "meter_start")
+        self.meter_stop_sensor = Sensor(self.id, "meter_stop")
 
     @on(Action.boot_notification)
     async def on_boot_notification(
@@ -96,6 +99,8 @@ class MyChargePoint(cp):
         await self.mqtt_client.register(self.state_sensor)
         await self.mqtt_client.register(self.energy_meter_sensor)
         await self.mqtt_client.register(self.power_sensor)
+        await self.mqtt_client.register(self.meter_start_sensor)
+        await self.mqtt_client.register(self.meter_stop_sensor)
 
         await self.boot_sensor.publish(
             json.dumps({"vendor": charge_point_vendor, "model": charge_point_model})
@@ -210,9 +215,27 @@ class MyChargePoint(cp):
     ):
         self.logger.debug("Transaction started")
 
+        await self.meter_start_sensor.publish(meter_start)
+
         return call_result.StartTransaction(
             1, id_tag_info=IdTagInfo(AuthorizationStatus.accepted)
         )
+
+    @on(Action.stop_transaction)
+    async def on_stop_transaction(
+        self,
+        id_tag: str,
+        meter_stop: int,
+        timestamp: str,
+        transaction_id: int,
+        reason: Reason,
+        **kwargs,
+    ):
+        self.logger.debug("Transaction stopped: %s", reason)
+
+        await self.meter_stop_sensor.publish(meter_stop)
+
+        return call_result.StopTransaction()
 
     async def on_enter_idle(self) -> None:
         result: call_result.RemoteStartTransaction = await self.call(
