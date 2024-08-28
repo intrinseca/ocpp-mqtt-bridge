@@ -224,11 +224,10 @@ class MyChargePoint(cp):
     @on(Action.stop_transaction)
     async def on_stop_transaction(
         self,
-        id_tag: str,
         meter_stop: int,
         timestamp: str,
         transaction_id: int,
-        reason: Reason,
+        reason: Reason = Reason.local,
         **kwargs,
     ):
         self.logger.debug("Transaction stopped: %s", reason)
