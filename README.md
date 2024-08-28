@@ -1,6 +1,6 @@
 # OCPP Central Station to MQTT Bridge
 
-[![Build Status](https://img.shields.io/github/actions/workflow/status/intrinseca/ocpp-mqtt-bridge/ci.yml?branch=main)](https://github.com/intrinseca/ocpp-mqtt-bridge/actions)
+[![Build Status](https://img.shields.io/github/actions/workflow/status/intrinseca/ocpp-mqtt-bridge/docker-image.yml?branch=main)](https://github.com/intrinseca/ocpp-mqtt-bridge/actions)
 [![License](https://img.shields.io/github/license/intrinseca/ocpp-mqtt-bridge)](LICENSE)
 [![Version](https://img.shields.io/github/v/release/intrinseca/ocpp-mqtt-bridge)](https://github.com/intrinseca/ocpp-mqtt-bridge/releases)
 [![Issues](https://img.shields.io/github/issues/intrinseca/ocpp-mqtt-bridge)](https://github.com/intrinseca/ocpp-mqtt-bridge/issues)
