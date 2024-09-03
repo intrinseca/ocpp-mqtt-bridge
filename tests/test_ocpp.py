@@ -2,13 +2,12 @@ import asyncio
 import datetime
 import functools
 import logging
-from unittest.mock import AsyncMock
 from unittest.mock import call as mock_call
+from unittest.mock import patch
 
 import pytest
 import pytest_asyncio
 import websockets
-from aiomqtt import Client
 from ocpp.routing import after, on
 from ocpp.v16 import ChargePoint as cp
 from ocpp.v16 import call, call_result
@@ -25,14 +24,19 @@ from ocpp.v16.enums import (
 )
 
 from ocpp_mqtt_bridge.cs import on_connect
+from ocpp_mqtt_bridge.mqtt import HAMQTTClient
 
 logging.getLogger("ocpp_mqtt_bridge").setLevel(logging.DEBUG)
 logging.getLogger("transitions").setLevel(logging.INFO)
 
 
 @pytest.fixture()
-def mock_mqtt_client():
-    return AsyncMock(Client)
+@patch("ocpp_mqtt_bridge.mqtt.HAMQTTClient", autospec=True)
+def mock_mqtt_client(MockClient):
+    client = MockClient
+    client.register.side_effect = HAMQTTClient.register
+
+    return client
 
 
 @pytest_asyncio.fixture()
@@ -97,6 +101,13 @@ class ChargePointSimulator(cp):
 @pytest_asyncio.fixture
 async def cp_simulator(ws_server, ws_client):
     async with ChargePointSimulator("dummy", ws_client) as cp:
+        request = call.BootNotification(
+            charge_point_model="DummyChargePoint",
+            charge_point_vendor="Test",
+        )
+
+        await cp.call(request)
+
         yield cp
 
 

@@ -1,9 +1,13 @@
+from __future__ import annotations
+
 import logging
 from abc import ABC, abstractmethod
 from typing import Any, Generic, Protocol, TypeVar
 
 import aiomqtt
 from aiomqtt.types import PayloadType
+
+from .typing import FloatHandler, MQTTInterfaceProtocol
 
 logger = logging.getLogger(__name__)
 
@@ -15,15 +19,12 @@ class SetHandler(Protocol[T]):
 
 
 class Entity:
-    def __init__(self, *topic) -> None:
-        self.topic = "/".join(topic)
-        self.client: aiomqtt.Client | None = None
+    def __init__(self, parent: HAMQTTClient, *topic) -> None:
+        self.topic = "/".join([parent.prefix, *topic])
+        self.client = parent
 
     async def publish(self, value: Any) -> None:
-        if self.client is None:
-            raise ValueError("Cannot publish on unregistered entity")
-        else:
-            await self.client.publish(self.topic, str(value), retain=True)
+        await self.client.publish(self.topic, str(value), retain=True)
 
 
 class Sensor(Entity):
@@ -99,3 +100,46 @@ class HAMQTTClient(aiomqtt.Client):
 
     async def publish(self, topic: str, *args, **kwargs) -> None:
         await super().publish(self.topic(topic), *args, **kwargs)
+
+
+class MQTTInterface(MQTTInterfaceProtocol):
+    def __init__(self, cp_id: str, mqtt_hostname: str, mqtt_prefix: str) -> None:
+        self.id = cp_id
+
+        self.client = HAMQTTClient(
+            "/".join([mqtt_prefix, cp_id]), hostname=mqtt_hostname
+        )
+
+        self.charging_limit_number = Number(
+            self.id, "charging_limit", set_handler=self.on_set_charging_limit
+        )
+
+        self._charging_power_handler: FloatHandler | None = None
+
+        # self.boot_sensor = Sensor(self.client, "boot")
+        # self.heartbeat_sensor = Sensor(self.client, "heartbeat")
+        # self.connector_status_sensor = Sensor(self.client, "connector_status")
+        self.state_sensor = Sensor(self.client, "state")
+        self.energy_sensor = Sensor(self.client, "energy_meter")
+        self.power_sensor = Sensor(self.client, "power")
+        # self.meter_start_sensor = Sensor(self.client, "meter_start")
+        # self.meter_stop_sensor = Sensor(self.client, "meter_stop")
+
+    async def start(self) -> None:
+        await self.client.connect()
+
+    async def publish_state(self, state: str) -> None:
+        await self.state_sensor.publish(state)
+
+    async def publish_power(self, power: float) -> None:
+        await self.power_sensor.publish(power)
+
+    async def publish_energy(self, energy: float) -> None:
+        await self.energy_sensor.publish(energy)
+
+    def set_charging_power_handler(self, handler: FloatHandler) -> None:
+        self._charging_power_handler = handler
+
+    async def on_set_charging_limit(self, value: float) -> None:
+        if self._charging_power_handler is not None:
+            await self._charging_power_handler(value)

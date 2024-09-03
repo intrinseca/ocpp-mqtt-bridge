@@ -6,7 +6,7 @@ import sys
 import click
 import tomllib
 
-from .cs import run_cs
+from .websocket import start_ocpp
 
 
 @click.command()
@@ -26,7 +26,7 @@ def main(hostname, prefix):
 
         set_event_loop_policy(WindowsSelectorEventLoopPolicy())
 
-    asyncio.run(run_cs(hostname, prefix))
+    asyncio.run(start_ocpp(hostname, prefix))
 
 
 if __name__ == "__main__":
