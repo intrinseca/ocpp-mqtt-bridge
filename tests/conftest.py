@@ -1,19 +1,19 @@
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from unittest.mock import patch
 
 import pytest
 
 
 def fixed_now(tz=None):
-    return datetime(2024, 1, 2, 12, 0, tzinfo=timezone.utc).astimezone(tz)
+    return datetime(2024, 1, 2, 12, 0, tzinfo=UTC).astimezone(tz)
 
 
 def fixed_now_summer(tz=None):
-    return datetime(2024, 7, 2, 12, 0, tzinfo=timezone.utc).astimezone(tz)
+    return datetime(2024, 7, 2, 12, 0, tzinfo=UTC).astimezone(tz)
 
 
 def fixed_now_dst(tz=None):
-    return datetime(2024, 3, 31, 12, 0, tzinfo=timezone.utc).astimezone(tz)
+    return datetime(2024, 3, 31, 12, 0, tzinfo=UTC).astimezone(tz)
 
 
 @pytest.fixture

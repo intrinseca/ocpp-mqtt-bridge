@@ -45,5 +45,7 @@ select = [
     "RUF", # the ruff developer's own rules
 ]
 
+ignore = ["UP040"]
+
 [tool.mypy]
 mypy_path = "$MYPY_CONFIG_FILE_DIR/stubs"

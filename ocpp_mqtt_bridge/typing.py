@@ -1,5 +1,6 @@
+from collections.abc import Callable, Coroutine
 from dataclasses import dataclass
-from typing import Callable, Coroutine, Protocol, TypeAlias
+from typing import Protocol, TypeAlias
 
 
 @dataclass

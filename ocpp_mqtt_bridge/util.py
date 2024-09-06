@@ -13,6 +13,6 @@ def today_at(target_time: datetime.time) -> datetime.datetime:
     result = datetime.datetime.combine(now, target_time)
 
     # Convert the target time to UTC
-    utc_time = result.astimezone(datetime.timezone.utc)
+    utc_time = result.astimezone(datetime.UTC)
 
     return utc_time

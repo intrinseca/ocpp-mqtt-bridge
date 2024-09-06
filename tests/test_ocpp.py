@@ -123,7 +123,7 @@ async def test_boot(cp_simulator: ChargePointSimulator, patch_datetime_now) -> N
     assert response.interval == 10
     assert (
         response.current_time
-        == datetime.datetime.now(datetime.timezone.utc).isoformat()
+        == datetime.datetime.now(datetime.UTC).isoformat()
     )
 
 
@@ -136,7 +136,7 @@ async def test_heartbeat(
 
     assert (
         response.current_time
-        == datetime.datetime.now(datetime.timezone.utc).isoformat()
+        == datetime.datetime.now(datetime.UTC).isoformat()
     )
 
 
