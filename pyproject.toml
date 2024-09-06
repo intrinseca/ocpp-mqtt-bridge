@@ -1,36 +1,33 @@
-[tool.poetry]
+[project]
 name = "ocpp_mqtt_bridge"
-version = "0.0.0"
-description = ""
-authors = ["Michael Allan <michael@intrinseca.me.uk>"]
-license = "MIT"
+version = "0.1.0"
+description = "OCPP Central Station to MQTT Bridge"
 readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "aiomqtt>=2.3.0",
+    "click>=8.1.7",
+    "ocpp>=1.0.0",
+    "transitions>=0.9.2",
+    "tzdata>=2024.1",
+    "websockets>=13.0.1",
+]
 
-[tool.poetry.dependencies]
-python = "^3.12"
-ocpp = "^1.0.0"
-websockets = "^12.0"
-transitions = "^0.9.1"
-aiomqtt = "^2.3.0"
-tzdata = "^2024.1"
-click = "^8.1.7"
+[tool.uv]
+dev-dependencies = [
+    "mypy>=1.11.2",
+    "pytest>=8.3.2",
+    "pytest-asyncio>=0.24.0",
+    "ruff>=0.6.4",
+    "types-jsonschema>=4.23.0.20240813",
+]
 
-[tool.poetry.group.dev.dependencies]
-ruff = "^0.6.0"
-mypy = "^1.11.0"
-types-jsonschema = "^4.23.0.20240712"
-pytest = "^8.3.2"
-pytest-asyncio = "^0.23.8"
-types-pytz = "^2024.1.0.20240417"
-
-[tool.poetry-dynamic-versioning]
-enable = true
 [build-system]
-requires = ["poetry-core>=1.0.0", "poetry-dynamic-versioning"]
-build-backend = "poetry_dynamic_versioning.backend"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
 [tool.pytest.ini_options]
-log_cli=true
+log_cli = true
 filterwarnings = "ignore:.*Action enum contains deprecated members.*:DeprecationWarning"
 
 [tool.ruff]
@@ -39,13 +36,13 @@ extend-exclude = ["stubs"]
 [tool.ruff.lint]
 
 select = [
-    "A",  # prevent using keywords that clobber python builtins
-    "B",  # bugbear: security warnings
-    "E",  # pycodestyle
-    "F",  # pyflakes
-    "ISC",  # implicit string concatenation
+    "A",   # prevent using keywords that clobber python builtins
+    "B",   # bugbear: security warnings
+    "E",   # pycodestyle
+    "F",   # pyflakes
+    "ISC", # implicit string concatenation
     "UP",  # alert you when better syntax is available in your python version
-    "RUF",  # the ruff developer's own rules
+    "RUF", # the ruff developer's own rules
 ]
 
 [tool.mypy]

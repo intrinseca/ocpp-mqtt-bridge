@@ -26,6 +26,14 @@
                 "-p",
                 "ocpp_test"
             ]
+        },
+        {
+            "name": "Debug Unit Test",
+            "type": "debugpy",
+            "purpose": [
+                "debug-test"
+            ],
+            "justMyCode": false,
         }
     ]
 }
