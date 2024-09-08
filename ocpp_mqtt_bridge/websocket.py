@@ -12,7 +12,6 @@ logger = logging.getLogger(__name__)
 
 async def on_connect(
     websocket: websockets.WebSocketServerProtocol,
-    path: str,
     mqtt_hostname: str,
     mqtt_prefix: str,
 ):
@@ -20,7 +19,7 @@ async def on_connect(
     and start listening for messages.
 
     """
-    charge_point_id = path.strip("/").split("/")[-1]
+    charge_point_id = websocket.path.strip("/").split("/")[-1]
 
     ocpp = OCPPInterface(charge_point_id, websocket)
     mqtt = MQTTInterface(charge_point_id, mqtt_hostname, mqtt_prefix)

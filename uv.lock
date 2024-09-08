@@ -108,14 +108,14 @@ wheels = [
 
 [[package]]
 name = "ocpp"
-version = "1.0.0"
+version = "2.0.0rc2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "jsonschema" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/61/35/25374c1e67510a7e936d94e60070db53617c335c6c5ce97d8069b327b389/ocpp-1.0.0.tar.gz", hash = "sha256:d39b9e152d5e4d378f82dd26653ced3aa66038fead496248ebb71aff1c006c70", size = 106243 }
+sdist = { url = "https://files.pythonhosted.org/packages/e8/12/19e5334d86ece0f84abc80d3712950cdcf7db77c5d847b4719ad3f66fdf0/ocpp-2.0.0rc2.tar.gz", hash = "sha256:a2686fae7704184306f48dca91b8094698de1bfeac900209bc3900101458fbdd", size = 106179 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/a5/66/5e427455af31dff76929f3f7117cb21a957b19eb6133eb0a50f7a3d1bb78/ocpp-1.0.0-py3-none-any.whl", hash = "sha256:2f1973337f3c37bdd67fa2fe6b614be53b35f839dddefdc7b94e3469eba0f3e0", size = 230519 },
+    { url = "https://files.pythonhosted.org/packages/c5/1f/55451ce5bf766f64389548953b4d2a1d856093fa85fc7f85a077798296f9/ocpp-2.0.0rc2-py3-none-any.whl", hash = "sha256:f1eef25ddb2d4e73c3340e2161821624a170507953ebae564356b774a25b1d52", size = 230704 },
 ]
 
 [[package]]
@@ -144,7 +144,7 @@ dev = [
 requires-dist = [
     { name = "aiomqtt", specifier = ">=2.3.0" },
     { name = "click", specifier = ">=8.1.7" },
-    { name = "ocpp", specifier = ">=1.0.0" },
+    { name = "ocpp", specifier = "==2.0.0rc2" },
     { name = "transitions", specifier = ">=0.9.2" },
     { name = "tzdata", specifier = ">=2024.1" },
     { name = "websockets", specifier = ">=13.0.1" },

@@ -207,7 +207,7 @@ class OCPPInterface(cp, OCPPInterfaceProtocol):
         **kwargs,
     ):
         if self._status_handler is not None:
-            await self._status_handler(error_code, status)
+            await self._status_handler(str(error_code), str(status))
 
     @on(Action.start_transaction)
     async def on_start_transaction(
@@ -252,9 +252,9 @@ class OCPPInterface(cp, OCPPInterfaceProtocol):
                 value["measurand"] == "Energy.Active.Import.Register"
                 and self._energy_handler is not None
             ):
-                await self._energy_handler(value["value"])
+                await self._energy_handler(float(value["value"]))
             elif (
                 value["measurand"] == "Power.Active.Import"
                 and self._power_handler is not None
             ):
-                await self._power_handler(value["value"])
+                await self._power_handler(float(value["value"]))

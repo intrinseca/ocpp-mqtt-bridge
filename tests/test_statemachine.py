@@ -1,23 +1,18 @@
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import AsyncMock
 
 import pytest
-from transitions.extensions import AsyncMachine as Machine
 
-from ocpp_mqtt_bridge.mqtt import HAMQTTClient
-from ocpp_mqtt_bridge.ocpp_interface import OCPPInterface, states, transitions
-
-machine = Machine(states=states, transitions=transitions, initial="unknown")
+from ocpp_mqtt_bridge.central_station import CentralStation
+from ocpp_mqtt_bridge.mqtt import MQTTInterface
+from ocpp_mqtt_bridge.ocpp_interface import OCPPInterface
 
 
 @pytest.fixture()
 def model():
-    mock_mqtt_client = AsyncMock(HAMQTTClient)
+    ocpp = AsyncMock(OCPPInterface)
+    ocpp.id = "dummy"
 
-    model = OCPPInterface("dummy", None, mock_mqtt_client)
-    machine.add_model(model)
-
-    model.on_enter_idle = Mock()
-    model.on_exit_charging = Mock()
+    model = CentralStation(ocpp, AsyncMock(MQTTInterface))
     return model
 
 
@@ -30,7 +25,7 @@ async def test_trigger_transaction(model):
     await model.trigger("Preparing")
 
     assert model.state == "idle"
-    model.on_enter_idle.assert_called_once()
+    model._ocpp.remote_start.assert_called_once()
 
 
 @pytest.mark.asyncio
@@ -40,7 +35,7 @@ async def test_duplicate_events(model):
     await model.trigger("Preparing")
 
     assert model.state == "idle"
-    model.on_enter_idle.assert_called_once()
+    model._ocpp.remote_start.assert_called_once()
 
 
 @pytest.mark.asyncio

@@ -1,9 +1,7 @@
 import asyncio
 import datetime
-import functools
 import logging
-from unittest.mock import call as mock_call
-from unittest.mock import patch
+from unittest.mock import AsyncMock
 
 import pytest
 import pytest_asyncio
@@ -23,27 +21,43 @@ from ocpp.v16.enums import (
     RemoteStartStopStatus,
 )
 
-from ocpp_mqtt_bridge.cs import on_connect
-from ocpp_mqtt_bridge.mqtt import HAMQTTClient
+from ocpp_mqtt_bridge.ocpp_interface import OCPPInterface
+from ocpp_mqtt_bridge.typing import ChargePointInformation
 
 logging.getLogger("ocpp_mqtt_bridge").setLevel(logging.DEBUG)
 logging.getLogger("transitions").setLevel(logging.INFO)
 
 
-@pytest.fixture()
-@patch("ocpp_mqtt_bridge.mqtt.HAMQTTClient", autospec=True)
-def mock_mqtt_client(MockClient):
-    client = MockClient
-    client.register.side_effect = HAMQTTClient.register
-
-    return client
+@pytest.fixture
+def connection_registry() -> dict[str, OCPPInterface]:
+    return {}
 
 
-@pytest_asyncio.fixture()
-async def ws_server(mock_mqtt_client):
-    handler = functools.partial(on_connect, mqtt_client=mock_mqtt_client)
+@pytest_asyncio.fixture
+async def ws_server(connection_registry):
+    async def on_connect(
+        websocket: websockets.WebSocketServerProtocol,
+    ):
+        charge_point_id = websocket.path.strip("/").split("/")[-1]
 
-    async with websockets.serve(handler, "127.0.0.1", 9000, subprotocols=["ocpp1.6"]):
+        ocpp = OCPPInterface(charge_point_id, websocket)
+
+        ocpp._boot_handler = AsyncMock()
+        ocpp._status_handler = AsyncMock()
+        ocpp._boot_handler = AsyncMock()
+        ocpp._power_handler = AsyncMock()
+        ocpp._energy_handler = AsyncMock()
+
+        connection_registry[charge_point_id] = ocpp
+
+        try:
+            await ocpp.start()
+        except websockets.exceptions.ConnectionClosedOK:
+            pass
+
+    async with websockets.serve(
+        on_connect, "127.0.0.1", 9000, subprotocols=["ocpp1.6"]
+    ):
         yield
 
 
@@ -101,18 +115,20 @@ class ChargePointSimulator(cp):
 @pytest_asyncio.fixture
 async def cp_simulator(ws_server, ws_client):
     async with ChargePointSimulator("dummy", ws_client) as cp:
-        request = call.BootNotification(
-            charge_point_model="DummyChargePoint",
-            charge_point_vendor="Test",
-        )
+        # request = call.BootNotification(
+        #     charge_point_model="DummyChargePoint",
+        #     charge_point_vendor="Test",
+        # )
 
-        await cp.call(request)
+        # await cp.call(request)
 
         yield cp
 
 
 @pytest.mark.asyncio
-async def test_boot(cp_simulator: ChargePointSimulator, patch_datetime_now) -> None:
+async def test_boot(
+    cp_simulator: ChargePointSimulator, patch_datetime_now, connection_registry
+) -> None:
     request = call.BootNotification(
         charge_point_model="DummyChargePoint",
         charge_point_vendor="Test",
@@ -121,9 +137,12 @@ async def test_boot(cp_simulator: ChargePointSimulator, patch_datetime_now) -> N
 
     assert response.status == RegistrationStatus.accepted
     assert response.interval == 10
-    assert (
-        response.current_time
-        == datetime.datetime.now(datetime.UTC).isoformat()
+    assert response.current_time == datetime.datetime.now(datetime.UTC).isoformat()
+
+    await asyncio.sleep(0.1)  # allow @after handlers to be called
+
+    connection_registry["dummy"]._boot_handler.assert_called_once_with(
+        ChargePointInformation("Test", "DummyChargePoint")
     )
 
 
@@ -134,15 +153,12 @@ async def test_heartbeat(
     request = call.Heartbeat()
     response: call_result.Heartbeat = await cp_simulator.call(request)
 
-    assert (
-        response.current_time
-        == datetime.datetime.now(datetime.UTC).isoformat()
-    )
+    assert response.current_time == datetime.datetime.now(datetime.UTC).isoformat()
 
 
 @pytest.mark.asyncio
 async def test_status_notification(
-    cp_simulator: ChargePointSimulator, patch_datetime_now
+    cp_simulator: ChargePointSimulator, patch_datetime_now, connection_registry
 ) -> None:
     request = call.StatusNotification(
         1,
@@ -152,19 +168,11 @@ async def test_status_notification(
     )
     await cp_simulator.call(request)
 
+    await asyncio.sleep(0.1)  # allow @after handlers to be called
 
-@pytest.mark.asyncio
-async def test_connected(
-    cp_simulator: ChargePointSimulator, patch_datetime_now
-) -> None:
-    request = call.StatusNotification(
-        1,
-        ChargePointErrorCode.no_error,
-        ChargePointStatus.preparing,
-        datetime.datetime.now().isoformat(),
+    connection_registry["dummy"]._status_handler.assert_called_once_with(
+        "NoError", "Preparing"
     )
-    await cp_simulator.call(request)
-    await asyncio.wait_for(cp_simulator.got_remote_start.acquire(), 2)
 
 
 @pytest.mark.asyncio
@@ -182,7 +190,7 @@ async def test_start(cp_simulator: ChargePointSimulator, patch_datetime_now) -> 
 
 @pytest.mark.asyncio
 async def test_metervalues(
-    cp_simulator: ChargePointSimulator, patch_datetime_now, mock_mqtt_client
+    cp_simulator: ChargePointSimulator, patch_datetime_now, connection_registry
 ) -> None:
     request = call.MeterValues(
         connector_id=1,
@@ -206,45 +214,10 @@ async def test_metervalues(
 
     assert result is not None
 
-    mock_mqtt_client.publish.assert_has_calls(
-        [
-            # The OCPP lib seems to drop the first call when sending the message,
-            # don't know why
-            # mock_call(
-            #     "ocpp/dummy/Power-Active-Import",
-            #     """\
-            # {"timestamp": "2024-03-02T12:00:00", "value": "1000", "unit": "W"}""",
-            # ),
-            mock_call(
-                "ocpp/dummy/Energy-Active-Import-Register",
-                """\
-{"timestamp": "2024-03-02T12:00:00", "value": "10000", "unit": "Wh"}""",
-            ),
-        ]
-    )
+    await asyncio.sleep(0.1)  # allow @after handlers to be called
 
-
-@pytest.mark.asyncio
-async def test_connect_and_start(
-    cp_simulator: ChargePointSimulator, patch_datetime_now
-) -> None:
-    request = call.StatusNotification(
-        1,
-        ChargePointErrorCode.no_error,
-        ChargePointStatus.preparing,
-        datetime.datetime.now().isoformat(),
-    )
-    await cp_simulator.call(request)
-    await asyncio.wait_for(cp_simulator.got_remote_start.acquire(), 2)
-
-    start_request = call.StartTransaction(
-        connector_id=1,
-        id_tag="",
-        meter_start=0,
-        timestamp=datetime.datetime.now().isoformat(),
-    )
-    result: call_result.StartTransaction = await cp_simulator.call(start_request)
-    assert result.id_tag_info["status"] == AuthorizationStatus.accepted  # type: ignore[index]
+    connection_registry["dummy"]._energy_handler.assert_called_once_with(10000)
+    connection_registry["dummy"]._power_handler.assert_called_once_with(1000)
 
 
 @pytest.mark.asyncio

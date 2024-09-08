@@ -32,8 +32,10 @@ class Sensor(Entity):
 
 
 class SetEntity(Entity, Generic[T], ABC):
-    def __init__(self, *topic, set_handler: SetHandler[T]) -> None:
-        super().__init__(*topic)
+    def __init__(
+        self, parent: HAMQTTClient, *topic, set_handler: SetHandler[T]
+    ) -> None:
+        super().__init__(parent, *topic)
         self.set_topic = self.topic + "/set"
         self.set_handler = set_handler
 
@@ -111,7 +113,7 @@ class MQTTInterface(MQTTInterfaceProtocol):
         )
 
         self.charging_limit_number = Number(
-            self.id, "charging_limit", set_handler=self.on_set_charging_limit
+            self.client, "charging_limit", set_handler=self.on_set_charging_limit
         )
 
         self._charging_power_handler: FloatHandler | None = None

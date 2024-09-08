@@ -37,14 +37,6 @@ transitions = [
     ["Faulted", "faulted", None],
 ]
 
-default_machine = AsyncMachine(
-    states=states,
-    transitions=transitions,
-    initial="unknown",
-    after_state_change="on_state_change",
-    model_override=True,
-)
-
 
 class CentralStation:
     state: str
@@ -66,13 +58,20 @@ class CentralStation:
 
         self._mqtt.set_charging_power_handler(self._ocpp.set_charge_limit)
 
-        self.error_code = ChargePointErrorCode.no_error
+        self.error_code: str = str(ChargePointErrorCode.no_error)
 
-        default_machine.add_model(self)
+        self.machine = AsyncMachine(
+            model=self,
+            states=states,
+            transitions=transitions,
+            initial="unknown",
+            after_state_change="on_state_change",
+            model_override=False,
+        )
 
-    async def handle_status(self, error_code, connector_status):
+    async def handle_status(self, error_code: str, connector_status: str) -> None:
         self.error_code = error_code
-        await self.trigger(connector_status)
+        await self.trigger(connector_status)  # type: ignore[attr-defined]
 
     async def handle_boot(self, cp_info: ChargePointInformation):
         pass

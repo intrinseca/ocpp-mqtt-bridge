@@ -7,7 +7,7 @@ requires-python = ">=3.12"
 dependencies = [
     "aiomqtt>=2.3.0",
     "click>=8.1.7",
-    "ocpp>=1.0.0",
+    "ocpp==2.0.0rc2",
     "transitions>=0.9.2",
     "tzdata>=2024.1",
     "websockets>=13.0.1",
