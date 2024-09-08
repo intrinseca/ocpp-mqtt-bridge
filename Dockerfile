@@ -70,6 +70,7 @@ STOPSIGNAL SIGINT
 # Copy the pre-built `/app` directory to the runtime container
 # and change the ownership to user app and group app in one step.
 COPY --from=build --chown=app:app /app /app
+COPY logging_config.toml /app/
 
 USER app
 WORKDIR /app
