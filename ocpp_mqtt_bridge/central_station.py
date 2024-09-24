@@ -81,6 +81,7 @@ class CentralStation:
     async def handle_status(self, error_code: str, connector_status: str) -> None:
         self.error_code = error_code
         await self.trigger(connector_status)  # type: ignore[attr-defined]
+        await self._mqtt.publish_connector_status(connector_status)
 
     async def handle_boot(self, cp_info: ChargePointInformation) -> None:
         pass

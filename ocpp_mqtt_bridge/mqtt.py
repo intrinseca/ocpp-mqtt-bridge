@@ -128,7 +128,7 @@ class MQTTInterface(MQTTInterfaceProtocol):
 
         # self.boot_sensor = Sensor(self.client, "boot")
         # self.heartbeat_sensor = Sensor(self.client, "heartbeat")
-        # self.connector_status_sensor = Sensor(self.client, "connector_status")
+        self.connector_status_sensor = self.client.make_sensor("connector_status")
         self.state_sensor = self.client.make_sensor("state")
         self.energy_sensor = self.client.make_sensor("energy_meter")
         self.power_sensor = self.client.make_sensor("power")
@@ -140,6 +140,9 @@ class MQTTInterface(MQTTInterfaceProtocol):
 
     async def publish_state(self, state: str) -> None:
         await self.state_sensor.publish(state)
+
+    async def publish_connector_status(self, state: str) -> None:
+        await self.connector_status_sensor.publish(state)
 
     async def publish_power(self, power: float) -> None:
         await self.power_sensor.publish(power)
