@@ -44,9 +44,6 @@ class SetEntity(Entity, Generic[T], ABC):
     async def on_set(self, value: str) -> None:
         raise NotImplementedError()
 
-    async def subscribe(self) -> None:
-        await self.client.subscribe(self)
-
 
 class Number(SetEntity[int]):
     async def on_set(self, value: str) -> None:
@@ -56,21 +53,23 @@ class Number(SetEntity[int]):
 class HAMQTTClient:
     def __init__(self, prefix: str, *args: Any, **kwargs: Any) -> None:
         self.prefix = prefix
-        self.entities: dict[str, Entity] = {}
+        self.entities: dict[str, SetEntity] = {}
 
         self.mqtt = aiomqtt.Client(
             *args, will=aiomqtt.Will(self.topic("online"), "OFF"), **kwargs
         )
 
+    def make_sensor(self, *topic: str) -> Sensor:
+        return Sensor(self, *topic)
+
+    def make_number(self, *topic: str, set_handler: SetHandler[int]) -> Number:
+        number = Number(self, *topic, set_handler=set_handler)
+        self.entities[number.topic] = number
+
+        return number
+
     def topic(self, *t: str) -> str:
         return "/".join([self.prefix, *t])
-
-    async def subscribe(self, entity: SetEntity[Any]) -> None:
-        self.entities[entity.topic] = entity
-
-        t = self.topic(entity.set_topic)
-        logger.debug("Subscribing to %s", t)
-        await self.mqtt.subscribe(t)
 
     def decode_payload(self, payload: PayloadType) -> str:
         match payload:
@@ -86,6 +85,11 @@ class HAMQTTClient:
     async def connect(self) -> None:
         async with self.mqtt:
             await self.publish("online", "ON")
+
+            for entity in self.entities.values():
+                t = self.topic(entity.set_topic)
+                logger.debug("Subscribing to %s", t)
+                await self.mqtt.subscribe(t)
 
             async for message in self.mqtt.messages:
                 logger.debug(
@@ -116,8 +120,8 @@ class MQTTInterface(MQTTInterfaceProtocol):
             "/".join([mqtt_prefix, cp_id]), hostname=mqtt_hostname
         )
 
-        self.charging_limit_number = Number(
-            self.client, "charging_limit", set_handler=self.on_set_charging_limit
+        self.charging_limit_number = self.client.make_number(
+            "charging_limit", set_handler=self.on_set_charging_limit
         )
 
         self._charging_power_handler: FloatHandler | None = None
@@ -125,14 +129,13 @@ class MQTTInterface(MQTTInterfaceProtocol):
         # self.boot_sensor = Sensor(self.client, "boot")
         # self.heartbeat_sensor = Sensor(self.client, "heartbeat")
         # self.connector_status_sensor = Sensor(self.client, "connector_status")
-        self.state_sensor = Sensor(self.client, "state")
-        self.energy_sensor = Sensor(self.client, "energy_meter")
-        self.power_sensor = Sensor(self.client, "power")
+        self.state_sensor = self.client.make_sensor("state")
+        self.energy_sensor = self.client.make_sensor("energy_meter")
+        self.power_sensor = self.client.make_sensor("power")
         # self.meter_start_sensor = Sensor(self.client, "meter_start")
         # self.meter_stop_sensor = Sensor(self.client, "meter_stop")
 
     async def start(self) -> None:
-        await self.charging_limit_number.subscribe()
         await self.client.connect()
 
     async def publish_state(self, state: str) -> None:
