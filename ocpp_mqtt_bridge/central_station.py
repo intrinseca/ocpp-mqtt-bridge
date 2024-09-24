@@ -10,6 +10,14 @@ states = ["unknown", "disconnected", "idle", "ready", "charging", "faulted"]
 transitions = [
     ["Available", ["unknown", "idle", "ready", "faulted", "charging"], "disconnected"],
     ["Available", "disconnected", None],
+    ["Reserved", ["unknown", "idle", "ready", "faulted", "charging"], "disconnected"],
+    ["Reserved", "disconnected", None],
+    [
+        "Unavailable",
+        ["unknown", "idle", "ready", "faulted", "charging"],
+        "disconnected",
+    ],
+    ["Unavailable", "disconnected", None],
     ["Preparing", ["unknown", "disconnected", "ready", "faulted", "charging"], "idle"],
     ["Preparing", "idle", None],
     [
@@ -17,6 +25,7 @@ transitions = [
         ["unknown", "disconnected", "idle", "faulted", "charging"],
         "ready",
     ],
+    ["StartTransaction", "ready", None],
     ["Charging", ["unknown", "disconnected", "idle", "ready", "faulted"], "charging"],
     ["Charging", "charging", None],
     [

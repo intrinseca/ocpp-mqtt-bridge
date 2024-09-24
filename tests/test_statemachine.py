@@ -2,7 +2,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from ocpp_mqtt_bridge.central_station import CentralStation
+from ocpp_mqtt_bridge.central_station import CentralStation, states
 from ocpp_mqtt_bridge.mqtt import MQTTInterface
 from ocpp_mqtt_bridge.ocpp_interface import OCPPInterface
 
@@ -74,3 +74,27 @@ async def test_sequence(model):
 
     await model.trigger("Available")
     assert model.state == "disconnected"
+
+
+@pytest.mark.parametrize(
+    "test_event,expected_state",
+    [
+        ("Available", "disconnected"),
+        ("Preparing", "idle"),
+        ("Charging", "charging"),
+        ("StartTransaction", "ready"),
+        ("SuspendedEVSE", "ready"),
+        ("SuspendedEV", "ready"),
+        ("Finishing", "ready"),
+        ("Reserved", "disconnected"),
+        ("Unavailable", "disconnected"),
+        ("Faulted", "faulted"),
+    ],
+)
+@pytest.mark.parametrize("initial_state", states)
+@pytest.mark.asyncio
+async def test_transition(initial_state, test_event, expected_state, model):
+    model.state = initial_state
+
+    await model.trigger(test_event)
+    assert model.state == expected_state
