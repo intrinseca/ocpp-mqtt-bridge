@@ -5,6 +5,7 @@ from abc import ABC, abstractmethod
 from typing import Any, Generic, Protocol, TypeVar
 
 import aiomqtt
+from aiomqtt.message import Message
 from aiomqtt.types import PayloadType
 
 from .typing import FloatHandler, MQTTInterfaceProtocol
@@ -43,6 +44,9 @@ class SetEntity(Entity, Generic[T], ABC):
     async def on_set(self, value: str) -> None:
         raise NotImplementedError()
 
+    async def subscribe(self) -> None:
+        await self.client.subscribe(self)
+
 
 class Number(SetEntity[int]):
     async def on_set(self, value: str) -> None:
@@ -61,15 +65,12 @@ class HAMQTTClient:
     def topic(self, *t: str) -> str:
         return "/".join([self.prefix, *t])
 
-    async def register(self, entity: Entity) -> None:
+    async def subscribe(self, entity: SetEntity[Any]) -> None:
         self.entities[entity.topic] = entity
 
-        if isinstance(entity, SetEntity):
-            t = self.topic(entity.set_topic)
-            logger.debug("Subscribing to %s", t)
-            await self.mqtt.subscribe(t)
-
-        entity.client = self
+        t = self.topic(entity.set_topic)
+        logger.debug("Subscribing to %s", t)
+        await self.mqtt.subscribe(t)
 
     def decode_payload(self, payload: PayloadType) -> str:
         match payload:
@@ -91,14 +92,17 @@ class HAMQTTClient:
                     "Recieved mqtt message on %s: %s", message.topic, message.payload
                 )
 
-                topic = message.topic.value
+                await self.process_message(message)
 
-                if topic.endswith("/set"):
-                    topic = topic.removesuffix("/set").removeprefix(self.prefix + "/")
+    async def process_message(self, message: Message) -> None:
+        topic = message.topic.value
 
-                if (set_entity := self.entities.get(topic)) is not None:
-                    if isinstance(set_entity, SetEntity):
-                        await set_entity.on_set(self.decode_payload(message.payload))
+        if topic.endswith("/set"):
+            topic = topic.removesuffix("/set").removeprefix(self.prefix + "/")
+
+        if (set_entity := self.entities.get(topic)) is not None:
+            if isinstance(set_entity, SetEntity):
+                await set_entity.on_set(self.decode_payload(message.payload))
 
     async def publish(self, topic: str, *args: Any, **kwargs: Any) -> None:
         await self.mqtt.publish(self.topic(topic), *args, **kwargs)
@@ -128,6 +132,7 @@ class MQTTInterface(MQTTInterfaceProtocol):
         # self.meter_stop_sensor = Sensor(self.client, "meter_stop")
 
     async def start(self) -> None:
+        await self.charging_limit_number.subscribe()
         await self.client.connect()
 
     async def publish_state(self, state: str) -> None:
