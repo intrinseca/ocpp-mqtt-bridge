@@ -53,7 +53,7 @@ class Number(SetEntity[int]):
 class HAMQTTClient:
     def __init__(self, prefix: str, *args: Any, **kwargs: Any) -> None:
         self.prefix = prefix
-        self.entities: dict[str, SetEntity] = {}
+        self.entities: dict[str, SetEntity[Any]] = {}
 
         self.mqtt = aiomqtt.Client(
             *args, will=aiomqtt.Will(self.topic("online"), "OFF"), **kwargs
