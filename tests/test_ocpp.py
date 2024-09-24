@@ -126,6 +126,11 @@ async def cp_simulator(ws_server, ws_client):
 
 
 @pytest.mark.asyncio
+async def test_id(cp_simulator: ChargePointSimulator, connection_registry) -> None:
+    assert connection_registry["dummy"].id == "dummy"
+
+
+@pytest.mark.asyncio
 async def test_boot(
     cp_simulator: ChargePointSimulator, patch_datetime_now, connection_registry
 ) -> None:

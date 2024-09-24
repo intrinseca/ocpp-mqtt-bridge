@@ -48,7 +48,7 @@ class OCPPInterface(cp, OCPPInterfaceProtocol):
         response_timeout: int = 30,
     ) -> None:
         self.logger = logging.getLogger(f"{__name__}.{cp_id}")
-        super().__init__(id, connection, response_timeout)
+        super().__init__(cp_id, connection, response_timeout)
 
         self._status_handler: StatusHandler | None = None
         self._boot_handler: BootHandler | None = None
