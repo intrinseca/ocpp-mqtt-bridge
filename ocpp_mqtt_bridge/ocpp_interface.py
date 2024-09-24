@@ -1,5 +1,7 @@
 import datetime
 import logging
+from typing import Any
+from zoneinfo import ZoneInfo
 
 import websockets
 from ocpp.routing import after, on
@@ -24,7 +26,6 @@ from ocpp.v16.enums import (
     RecurrencyKind,
     RegistrationStatus,
 )
-from zoneinfo import ZoneInfo
 
 from .typing import (
     BootHandler,
@@ -44,7 +45,7 @@ class OCPPInterface(cp, OCPPInterfaceProtocol):
         self,
         cp_id: str,
         connection: websockets.WebSocketServerProtocol,
-        response_timeout=30,
+        response_timeout: int = 30,
     ) -> None:
         self.logger = logging.getLogger(f"{__name__}.{cp_id}")
         super().__init__(id, connection, response_timeout)
@@ -125,8 +126,8 @@ class OCPPInterface(cp, OCPPInterfaceProtocol):
 
     @on(Action.boot_notification)
     async def on_boot_notification(
-        self, charge_point_vendor: str, charge_point_model: str, **kwargs
-    ):
+        self, charge_point_vendor: str, charge_point_model: str, **kwargs: Any
+    ) -> call_result.BootNotification:
         self.logger.debug(
             "Boot from %s %s",
             charge_point_vendor,
@@ -141,7 +142,7 @@ class OCPPInterface(cp, OCPPInterfaceProtocol):
 
     @after(Action.BootNotification)
     async def after_boot_notification(
-        self, charge_point_vendor: str, charge_point_model: str, **kwargs
+        self, charge_point_vendor: str, charge_point_model: str, **kwargs: Any
     ) -> None:
         result: call_result.SetChargingProfile = await self.call(
             call.SetChargingProfile(
@@ -174,7 +175,7 @@ class OCPPInterface(cp, OCPPInterfaceProtocol):
             )
 
     @on(Action.heartbeat)
-    async def on_heartbeat(self):
+    async def on_heartbeat(self) -> call_result.Heartbeat:
         self.logger.debug("Heartbeat")
 
         return call_result.Heartbeat(
@@ -187,8 +188,8 @@ class OCPPInterface(cp, OCPPInterfaceProtocol):
         connector_id: int,
         error_code: ChargePointErrorCode,
         status: ChargePointStatus,
-        **kwargs,
-    ):
+        **kwargs: Any,
+    ) -> call_result.StatusNotification:
         self.logger.debug(
             "Status: connector %d %s %s",
             connector_id,
@@ -204,8 +205,8 @@ class OCPPInterface(cp, OCPPInterfaceProtocol):
         connector_id: int,
         error_code: ChargePointErrorCode,
         status: ChargePointStatus,
-        **kwargs,
-    ):
+        **kwargs: Any,
+    ) -> None:
         if self._status_handler is not None:
             await self._status_handler(str(error_code), str(status))
 
@@ -217,8 +218,8 @@ class OCPPInterface(cp, OCPPInterfaceProtocol):
         meter_start: int,
         timestamp: str,
         reservation_id: int | None = None,
-        **kwargs,
-    ):
+        **kwargs: Any,
+    ) -> call_result.StartTransaction:
         self.logger.debug("Transaction started")
 
         return call_result.StartTransaction(
@@ -232,19 +233,23 @@ class OCPPInterface(cp, OCPPInterfaceProtocol):
         timestamp: str,
         transaction_id: int,
         reason: Reason = Reason.local,
-        **kwargs,
-    ):
+        **kwargs: Any,
+    ) -> call_result.StopTransaction:
         self.logger.debug("Transaction stopped: %s", reason)
 
         return call_result.StopTransaction()
 
     @on(Action.meter_values)
-    async def on_meter_values(self, connector_id, meter_value, **kwargs):
+    async def on_meter_values(
+        self, connector_id: str, meter_value: list[dict[str, Any]], **kwargs: Any
+    ) -> call_result.MeterValues:
         self.logger.debug("Meter Values: %r", meter_value)
         return call_result.MeterValues()
 
     @after(Action.meter_values)
-    async def after_meter_values(self, connector_id, meter_value, **kwargs):
+    async def after_meter_values(
+        self, connector_id: str, meter_value: list[dict[str, Any]], **kwargs: Any
+    ) -> None:
         latest_sample = max(meter_value, key=lambda m: m["timestamp"])
 
         for value in latest_sample["sampled_value"]:

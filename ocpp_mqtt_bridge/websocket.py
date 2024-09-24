@@ -14,7 +14,7 @@ async def on_connect(
     websocket: websockets.WebSocketServerProtocol,
     mqtt_hostname: str,
     mqtt_prefix: str,
-):
+) -> None:
     """For every new charge point that connects, create a ChargePoint instance
     and start listening for messages.
 
@@ -34,7 +34,7 @@ async def on_connect(
         logger.debug("CP %s disconnected", charge_point_id)
 
 
-async def start_ocpp(mqtt_hostname: str, mqtt_prefix: str):
+async def start_ocpp(mqtt_hostname: str, mqtt_prefix: str) -> None:
     handler = functools.partial(
         on_connect, mqtt_hostname=mqtt_hostname, mqtt_prefix=mqtt_prefix
     )

@@ -19,7 +19,7 @@ class SetHandler(Protocol[T]):
 
 
 class Entity:
-    def __init__(self, parent: HAMQTTClient, *topic) -> None:
+    def __init__(self, parent: HAMQTTClient, *topic: str) -> None:
         self.topic = "/".join([parent.prefix, *topic])
         self.client = parent
 
@@ -33,24 +33,24 @@ class Sensor(Entity):
 
 class SetEntity(Entity, Generic[T], ABC):
     def __init__(
-        self, parent: HAMQTTClient, *topic, set_handler: SetHandler[T]
+        self, parent: HAMQTTClient, *topic: str, set_handler: SetHandler[T]
     ) -> None:
         super().__init__(parent, *topic)
         self.set_topic = self.topic + "/set"
         self.set_handler = set_handler
 
     @abstractmethod
-    async def on_set(self, value: str):
+    async def on_set(self, value: str) -> None:
         raise NotImplementedError()
 
 
 class Number(SetEntity[int]):
-    async def on_set(self, value: str):
+    async def on_set(self, value: str) -> None:
         await self.set_handler(int(float(value)))
 
 
 class HAMQTTClient(aiomqtt.Client):
-    def __init__(self, prefix, *args, **kwargs) -> None:
+    def __init__(self, prefix: str, *args: Any, **kwargs: Any) -> None:
         self.prefix = prefix
         self.entities: dict[str, Entity] = {}
 
@@ -100,7 +100,7 @@ class HAMQTTClient(aiomqtt.Client):
                     if isinstance(set_entity, SetEntity):
                         await set_entity.on_set(self.decode_payload(message.payload))
 
-    async def publish(self, topic: str, *args, **kwargs) -> None:
+    async def publish(self, topic: str, *args: Any, **kwargs: Any) -> None:
         await super().publish(self.topic(topic), *args, **kwargs)
 
 

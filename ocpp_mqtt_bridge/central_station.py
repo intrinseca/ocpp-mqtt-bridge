@@ -73,7 +73,7 @@ class CentralStation:
         self.error_code = error_code
         await self.trigger(connector_status)  # type: ignore[attr-defined]
 
-    async def handle_boot(self, cp_info: ChargePointInformation):
+    async def handle_boot(self, cp_info: ChargePointInformation) -> None:
         pass
 
     async def on_state_change(self) -> None:

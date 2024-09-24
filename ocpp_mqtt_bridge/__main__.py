@@ -2,9 +2,9 @@ import asyncio
 import logging.config
 import os
 import sys
+import tomllib
 
 import click
-import tomllib
 
 from .websocket import start_ocpp
 
@@ -12,7 +12,7 @@ from .websocket import start_ocpp
 @click.command()
 @click.option("--hostname", "-h", required=True, help="The hostname of the MQTT server")
 @click.option("--prefix", "-p", default="ocpp", help="MQTT topic prefix")
-def main(hostname, prefix):
+def main(hostname: str, prefix: str) -> None:
     os.makedirs("logs", exist_ok=True)
 
     with open("logging_config.toml", "rb") as logging_config_file:
