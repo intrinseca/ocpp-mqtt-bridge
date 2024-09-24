@@ -20,7 +20,7 @@ class SetHandler(Protocol[T]):
 
 class Entity:
     def __init__(self, parent: HAMQTTClient, *topic: str) -> None:
-        self.topic = "/".join([parent.prefix, *topic])
+        self.topic = "/".join(topic)
         self.client = parent
 
     async def publish(self, value: Any) -> None:
@@ -49,12 +49,12 @@ class Number(SetEntity[int]):
         await self.set_handler(int(float(value)))
 
 
-class HAMQTTClient(aiomqtt.Client):
+class HAMQTTClient:
     def __init__(self, prefix: str, *args: Any, **kwargs: Any) -> None:
         self.prefix = prefix
         self.entities: dict[str, Entity] = {}
 
-        super().__init__(
+        self.mqtt = aiomqtt.Client(
             *args, will=aiomqtt.Will(self.topic("online"), "OFF"), **kwargs
         )
 
@@ -67,7 +67,7 @@ class HAMQTTClient(aiomqtt.Client):
         if isinstance(entity, SetEntity):
             t = self.topic(entity.set_topic)
             logger.debug("Subscribing to %s", t)
-            await self.subscribe(t)
+            await self.mqtt.subscribe(t)
 
         entity.client = self
 
@@ -83,10 +83,10 @@ class HAMQTTClient(aiomqtt.Client):
                 return ""
 
     async def connect(self) -> None:
-        async with self:
+        async with self.mqtt:
             await self.publish("online", "ON")
 
-            async for message in self.messages:
+            async for message in self.mqtt.messages:
                 logger.debug(
                     "Recieved mqtt message on %s: %s", message.topic, message.payload
                 )
@@ -101,7 +101,7 @@ class HAMQTTClient(aiomqtt.Client):
                         await set_entity.on_set(self.decode_payload(message.payload))
 
     async def publish(self, topic: str, *args: Any, **kwargs: Any) -> None:
-        await super().publish(self.topic(topic), *args, **kwargs)
+        await self.mqtt.publish(self.topic(topic), *args, **kwargs)
 
 
 class MQTTInterface(MQTTInterfaceProtocol):
