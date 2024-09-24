@@ -21,7 +21,7 @@ def main(hostname: str, prefix: str) -> None:
     logging.config.dictConfig(logging_config)
 
     # Change to the "Selector" event loop if platform is Windows
-    if sys.platform.lower() == "win32" or os.name.lower() == "nt":
+    if sys.platform == "win32":
         from asyncio import WindowsSelectorEventLoopPolicy, set_event_loop_policy
 
         set_event_loop_policy(WindowsSelectorEventLoopPolicy())
