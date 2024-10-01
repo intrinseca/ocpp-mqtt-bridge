@@ -15,6 +15,7 @@ from ocpp.v16.enums import (
     AuthorizationStatus,
     ChargePointErrorCode,
     ChargePointStatus,
+    ChargingProfilePurposeType,
     ChargingProfileStatus,
     Measurand,
     RegistrationStatus,
@@ -47,6 +48,7 @@ async def ws_server(connection_registry):
         ocpp._boot_handler = AsyncMock()
         ocpp._power_handler = AsyncMock()
         ocpp._energy_handler = AsyncMock()
+        ocpp._default_profile_handler = AsyncMock()
 
         connection_registry[charge_point_id] = ocpp
 
@@ -74,6 +76,7 @@ class ChargePointSimulator(cp):
     def __init__(self, *args, **kwargs):
         self.got_remote_start = asyncio.Semaphore(value=0)
         self.got_charging_profile = asyncio.Semaphore(value=0)
+        self.got_clear_charging_profile = asyncio.Semaphore(value=0)
         super().__init__(*args, **kwargs)
 
     async def send_heartbeat(self, arguments):
@@ -105,11 +108,24 @@ class ChargePointSimulator(cp):
         return call_result.SetChargingProfile(ChargingProfileStatus.accepted)
 
     @after(Action.set_charging_profile)
-    async def after_charging_profile(
+    async def after_set_charging_profile(
         self, connector_id, cs_charging_profiles, **kwargs
     ):
         self.charging_profile = cs_charging_profiles
         self.got_charging_profile.release()
+
+    @on(Action.clear_charging_profile)
+    async def on_clear_charging_profile(
+        self,
+        profile_id: int | None = None,
+        connector_id: int | None = None,
+        charging_profile_purpose: ChargingProfilePurposeType | None = None,
+        stack_level: int | None = None,
+        **kwargs,
+    ):
+        self.charging_profile = None
+        self.got_clear_charging_profile.release()
+        return call_result.ClearChargingProfile(ChargingProfileStatus.accepted)
 
 
 @pytest_asyncio.fixture
@@ -227,7 +243,7 @@ async def test_metervalues(
 
 @pytest.mark.asyncio
 async def test_connect_and_profile(
-    cp_simulator: ChargePointSimulator, patch_datetime_now
+    cp_simulator: ChargePointSimulator, patch_datetime_now, connection_registry
 ) -> None:
     request = call.BootNotification(
         charge_point_model="DummyChargePoint",
@@ -243,3 +259,39 @@ async def test_connect_and_profile(
     )
 
     assert cp_simulator.charging_profile["charging_schedule"]["duration"] == 60 * 60 * 5
+
+    await asyncio.sleep(1)  # delay to let the events bubble through...
+
+    connection_registry["dummy"]._default_profile_handler.assert_called_once_with(True)
+
+
+@pytest.mark.asyncio
+async def test_disable_profile(
+    cp_simulator: ChargePointSimulator, connection_registry
+) -> None:
+    await connection_registry["dummy"].set_default_profile(False)
+
+    await asyncio.wait_for(cp_simulator.got_clear_charging_profile.acquire(), 1)
+    await asyncio.sleep(1)  # delay to let the events bubble through...
+
+    connection_registry["dummy"]._default_profile_handler.assert_called_once_with(False)
+
+
+@pytest.mark.asyncio
+async def test_enable_profile(
+    cp_simulator: ChargePointSimulator, patch_datetime_now, connection_registry
+) -> None:
+    await connection_registry["dummy"].set_default_profile(True)
+
+    await asyncio.wait_for(cp_simulator.got_charging_profile.acquire(), 1)
+
+    assert (
+        cp_simulator.charging_profile["charging_schedule"]["start_schedule"]
+        == "2024-01-02T00:30:00+00:00"
+    )
+
+    assert cp_simulator.charging_profile["charging_schedule"]["duration"] == 60 * 60 * 5
+
+    await asyncio.sleep(1)  # delay to let the events bubble through...
+
+    connection_registry["dummy"]._default_profile_handler.assert_called_once_with(True)

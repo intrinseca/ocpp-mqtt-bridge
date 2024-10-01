@@ -1,10 +1,10 @@
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, call, patch
 
 import aiomqtt
 import pytest
 
 from ocpp_mqtt_bridge.mqtt import HAMQTTClient, MQTTInterface
-from ocpp_mqtt_bridge.typing import FloatHandler
+from ocpp_mqtt_bridge.typing import BoolHandler, FloatHandler
 
 
 @pytest.fixture()
@@ -42,13 +42,17 @@ async def test_state(interface: MQTTInterface):
 async def test_subscribe(interface: MQTTInterface):
     await interface.start()
 
-    interface.client.mqtt.subscribe.assert_called_once_with(
-        "ocpp_test/DUMMY/charging_limit/set",
+    interface.client.mqtt.subscribe.assert_has_calls(
+        [
+            call("ocpp_test/DUMMY/charging_limit/set"),
+            call("ocpp_test/DUMMY/default_profile/set"),
+        ],
+        any_order=True,
     )
 
 
 @pytest.mark.asyncio
-async def test_callback(interface: MQTTInterface):
+async def test_number_callback(interface: MQTTInterface):
     await interface.start()
 
     handler = AsyncMock(spec=FloatHandler)
@@ -59,3 +63,18 @@ async def test_callback(interface: MQTTInterface):
     )
 
     handler.assert_called_once_with(1234)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("state,result", [("ON", True), ("OFF", False)])
+async def test_bool_callback(interface: MQTTInterface, state, result):
+    await interface.start()
+
+    handler = AsyncMock(spec=BoolHandler)
+    interface.set_default_profile_handler(handler)
+
+    await interface.client.process_message(
+        aiomqtt.Message("ocpp_test/DUMMY/default_profile/set", state, 0, False, 0, None)
+    )
+
+    handler.assert_called_once_with(result)

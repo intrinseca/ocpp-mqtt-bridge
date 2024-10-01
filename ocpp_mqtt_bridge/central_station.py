@@ -67,6 +67,9 @@ class CentralStation:
 
         self._mqtt.set_charging_power_handler(self._ocpp.set_charge_limit)
 
+        self._mqtt.set_default_profile_handler(self._ocpp.set_default_profile)
+        self._ocpp.set_default_profile_handler(self._mqtt.publish_default_profile)
+
         self.error_code: str = str(ChargePointErrorCode.no_error)
 
         self.machine = AsyncMachine(

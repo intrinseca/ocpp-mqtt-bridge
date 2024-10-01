@@ -8,7 +8,7 @@ import aiomqtt
 from aiomqtt.message import Message
 from aiomqtt.types import PayloadType
 
-from .typing import FloatHandler, MQTTInterfaceProtocol
+from .typing import BoolHandler, FloatHandler, MQTTInterfaceProtocol
 
 logger = logging.getLogger(__name__)
 
@@ -50,6 +50,25 @@ class Number(SetEntity[int]):
         await self.set_handler(int(float(value)))
 
 
+SWITCH_MAPPING: dict[str, bool] = {"ON": True, "OFF": False}
+SWITCH_REVERSE_MAPPING: dict[bool, str] = {v: k for k, v in SWITCH_MAPPING.items()}
+
+
+class Switch(SetEntity[bool]):
+    async def on_set(self, value: str) -> None:
+        value_bool = SWITCH_MAPPING.get(value)
+
+        if value_bool is None:
+            raise ValueError("Unknown switch value")
+
+        await self.set_handler(value_bool)
+
+    async def publish(self, value: Any) -> None:
+        await self.client.publish(
+            self.topic, SWITCH_REVERSE_MAPPING[value], retain=True
+        )
+
+
 class HAMQTTClient:
     def __init__(self, prefix: str, *args: Any, **kwargs: Any) -> None:
         self.prefix = prefix
@@ -67,6 +86,12 @@ class HAMQTTClient:
         self.entities[number.topic] = number
 
         return number
+
+    def make_switch(self, *topic: str, set_handler: SetHandler[bool]) -> Switch:
+        switch = Switch(self, *topic, set_handler=set_handler)
+        self.entities[switch.topic] = switch
+
+        return switch
 
     def topic(self, *t: str) -> str:
         return "/".join([self.prefix, *t])
@@ -126,6 +151,12 @@ class MQTTInterface(MQTTInterfaceProtocol):
 
         self._charging_power_handler: FloatHandler | None = None
 
+        self.default_profile_switch = self.client.make_switch(
+            "default_profile", set_handler=self.on_default_profile
+        )
+
+        self._default_profile_handler: BoolHandler | None = None
+
         # self.boot_sensor = Sensor(self.client, "boot")
         # self.heartbeat_sensor = Sensor(self.client, "heartbeat")
         self.connector_status_sensor = self.client.make_sensor("connector_status")
@@ -150,9 +181,22 @@ class MQTTInterface(MQTTInterfaceProtocol):
     async def publish_energy(self, energy: float) -> None:
         await self.energy_sensor.publish(energy)
 
+    async def publish_default_profile(self, state: bool) -> None:
+        await self.default_profile_switch.publish(state)
+
     def set_charging_power_handler(self, handler: FloatHandler) -> None:
         self._charging_power_handler = handler
+
+    def set_default_profile_handler(self, handler: BoolHandler) -> None:
+        self._default_profile_handler = handler
 
     async def on_set_charging_limit(self, value: float) -> None:
         if self._charging_power_handler is not None:
             await self._charging_power_handler(value)
+
+            # TODO: Move to a publish from the OCPP interface
+            await self.charging_limit_number.publish(value)
+
+    async def on_default_profile(self, value: bool) -> None:
+        if self._default_profile_handler is not None:
+            await self._default_profile_handler(value)

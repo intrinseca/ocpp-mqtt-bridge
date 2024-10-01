@@ -28,6 +28,7 @@ from ocpp.v16.enums import (
 )
 
 from .typing import (
+    BoolHandler,
     BootHandler,
     ChargePointInformation,
     ChargingProfilePoint,
@@ -54,6 +55,7 @@ class OCPPInterface(cp, OCPPInterfaceProtocol):
         self._boot_handler: BootHandler | None = None
         self._power_handler: FloatHandler | None = None
         self._energy_handler: FloatHandler | None = None
+        self._default_profile_handler: BoolHandler | None = None
 
     def set_status_handler(self, handler: StatusHandler) -> None:
         self._status_handler = handler
@@ -66,6 +68,9 @@ class OCPPInterface(cp, OCPPInterfaceProtocol):
 
     def set_energy_handler(self, handler: FloatHandler) -> None:
         self._energy_handler = handler
+
+    def set_default_profile_handler(self, handler: BoolHandler) -> None:
+        self._default_profile_handler = handler
 
     async def set_charge_limit(self, limit: float) -> None:
         result: call_result.SetChargingProfile = await self.call(
@@ -87,6 +92,12 @@ class OCPPInterface(cp, OCPPInterfaceProtocol):
         )
 
         self.logger.debug("Set baseline profile to %d W: %s", limit, result.status)
+
+    async def set_default_profile(self, new_value: bool) -> None:
+        if new_value:
+            await self.enable_default_profile()
+        else:
+            await self.disable_default_profile()
 
     async def read_charging_profile(
         self, duration_seconds: int = 60 * 60 * 24
@@ -144,6 +155,14 @@ class OCPPInterface(cp, OCPPInterfaceProtocol):
     async def after_boot_notification(
         self, charge_point_vendor: str, charge_point_model: str, **kwargs: Any
     ) -> None:
+        if self._boot_handler is not None:
+            await self._boot_handler(
+                ChargePointInformation(charge_point_vendor, charge_point_model)
+            )
+
+        await self.enable_default_profile()
+
+    async def enable_default_profile(self) -> None:
         result: call_result.SetChargingProfile = await self.call(
             call.SetChargingProfile(
                 connector_id=0,
@@ -167,12 +186,25 @@ class OCPPInterface(cp, OCPPInterfaceProtocol):
             )
         )
 
+        if self._default_profile_handler:
+            await self._default_profile_handler(True)
+
         self.logger.debug("Charging profile set: %s", result.status)
 
-        if self._boot_handler is not None:
-            await self._boot_handler(
-                ChargePointInformation(charge_point_vendor, charge_point_model)
+    async def disable_default_profile(self) -> None:
+        result: call_result.ClearChargingProfile = await self.call(
+            call.ClearChargingProfile(
+                connector_id=0,
+                id=1,
+                stack_level=1,
+                charging_profile_purpose=ChargingProfilePurposeType.tx_default_profile,
             )
+        )
+
+        if self._default_profile_handler:
+            await self._default_profile_handler(False)
+
+        self.logger.debug("Charging profile cleared: %s", result.status)
 
     @on(Action.heartbeat)
     async def on_heartbeat(self) -> call_result.Heartbeat:
