@@ -68,14 +68,14 @@ This project uses uv for dependency management and packaging. Pushes to `main` p
 
 ## Releases
 
-Merge the release commit to `main`, then create and push an annotated numeric tag at that commit, such as `1.2.3`:
+Merge the release commit to `main`, then create and push an annotated tag at that commit, such as `v1.2.3`:
 
 ```bash
-git tag -a 1.2.3 -m "Release 1.2.3"
-git push origin 1.2.3
+git tag -a v1.2.3 -m "Release v1.2.3"
+git push origin v1.2.3
 ```
 
-After the release workflow succeeds, verify that the published image tag is `ghcr.io/intrinseca/ocpp-mqtt-bridge:1.2.3` and its installed `ocpp-mqtt-bridge` package version is `1.2.3`.
+After the release workflow succeeds, verify that the published image tag is `ghcr.io/intrinseca/ocpp-mqtt-bridge:v1.2.3` and its installed `ocpp-mqtt-bridge` package version is `1.2.3`. Tags without the `v` prefix also work; the image tag always matches the Git tag.
 
 ## License
 
