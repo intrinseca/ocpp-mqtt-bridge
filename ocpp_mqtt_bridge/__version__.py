@@ -1,2 +1,3 @@
-__version__ = "0.0.0"
-__version_tuple__ = (0, 0, 0)
+from importlib.metadata import version
+
+__version__ = version("ocpp-mqtt-bridge")

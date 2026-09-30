@@ -45,9 +45,11 @@ EOT
 # Now install the APPLICATION from `/src` without any dependencies.
 # `/src` will NOT be copied into the runtime container.
 # LEAVE THIS OUT if your application is NOT a proper Python package.
+ARG PACKAGE_VERSION
 COPY . /src
 RUN --mount=type=cache,target=/root/.cache \
-    uv pip install \
+    test -n "$PACKAGE_VERSION" && \
+    SETUPTOOLS_SCM_PRETEND_VERSION="$PACKAGE_VERSION" uv pip install \
     --python=$UV_PROJECT_ENVIRONMENT \
     --no-deps \
     /src
@@ -56,6 +58,9 @@ RUN --mount=type=cache,target=/root/.cache \
 
 FROM python:3.12
 SHELL ["sh", "-exc"]
+ARG PACKAGE_VERSION
+LABEL org.opencontainers.image.version="$PACKAGE_VERSION"
+ENV PACKAGE_VERSION="$PACKAGE_VERSION"
 
 # Optional: add the application virtualenv to search path.
 ENV PATH=/app/bin:$PATH
@@ -80,4 +85,5 @@ WORKDIR /app
 RUN <<EOT
 python -V
 python -Ic 'import ocpp_mqtt_bridge'
+python -c 'import importlib.metadata, os; actual = importlib.metadata.version("ocpp-mqtt-bridge"); expected = os.environ["PACKAGE_VERSION"]; assert actual == expected, f"{actual} != {expected}"'
 EOT

@@ -34,7 +34,7 @@ This project is tested with:
 
 1. Build and run the Docker container:
     ```bash
-    docker run -d ghcr.io/intrinseca/ocpp-mqtt-bridge:main -h mqtt-broker-hostname.example
+    docker run -d ghcr.io/intrinseca/ocpp-mqtt-bridge:dev -h mqtt-broker-hostname.example
     ```
 
 2. Connect your EV chargers to the OCPP Central Station using the provided URL.
@@ -44,7 +44,7 @@ Alternatively, use `docker-compose`:
 ```yaml
 services:
   ocpp:
-    image: ghcr.io/intrinseca/ocpp-mqtt-bridge:main
+    image: ghcr.io/intrinseca/ocpp-mqtt-bridge:dev
     container_name: ocpp
     ports:
       - "9000:9000" # map the websocket port you will program into the charge point
@@ -64,7 +64,18 @@ MQTT discovery will automatically add your EV chargers as devices in Home Assist
 
 ## Development
 
-This project uses Poetry for dependency management and packaging.
+This project uses uv for dependency management and packaging. Pushes to `main` publish the mutable `dev` image tag.
+
+## Releases
+
+Merge the release commit to `main`, then create and push an annotated numeric tag at that commit, such as `1.2.3`:
+
+```bash
+git tag -a 1.2.3 -m "Release 1.2.3"
+git push origin 1.2.3
+```
+
+After the release workflow succeeds, verify that the published image tag is `ghcr.io/intrinseca/ocpp-mqtt-bridge:1.2.3` and its installed `ocpp-mqtt-bridge` package version is `1.2.3`.
 
 ## License
 
